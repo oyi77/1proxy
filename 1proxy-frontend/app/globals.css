@@ -1,0 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=Bangers&family=Press+Start+2P&display=swap');
+
+:root {
+  --light-bg: #fef9f0;
+  --light-text: #1a1a1a;
+  --light-card: #ffffff;
+
+  --dark-bg: #1a1a2e;
+  --dark-text: #e4e4e7;
+  --dark-card: #2d2d3a;
+
+  --retro-pink: #FF69B4;
+  --retro-yellow: #FFD93D;
+  --retro-blue: #6BCB77;
+  --retro-purple: #A29BFE;
+  --retro-orange: #FF6B6B;
+  --retro-red: #FF5252;
+
+  --background: var(--light-bg);
+  --foreground: var(--light-text);
+}
+
+.dark {
+  --background: var(--dark-bg);
+  --foreground: var(--dark-text);
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.retro-border {
+  border: 3px solid #000000;
+  box-shadow: 4px 4px 0px #000000;
+}
+
+.retro-button {
+  border: 3px solid #000000;
+  box-shadow: 4px 4px 0px #000000;
+  transition: all 0.1s ease-in-out;
+  cursor: pointer;
+}
+
+.retro-button:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px #000000;
+}
+
+.retro-button:active {
+  transform: translate(0px, 0px);
+  box-shadow: 2px 2px 0px #000000;
+}

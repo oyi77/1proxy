@@ -1,0 +1,112 @@
+# Virtual Environments
+backend-venv/
+venv/
+env/
+.venv/
+envs/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.py[cod]
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.pnpm-debug.log*
+
+# Next.js
+.next/
+out/
+.next-env.d.ts
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+*.env
+
+# Keep example env file
+!.env.example
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+1proxy-backend/data/*.db
+
+# Logs
+*.log
+logs/
+*.log.*
+backend.log
+*.cache
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage/
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Docker
+docker-volumes/
+docker-compose.override.yml
+
+# IDE & Editor
+.vscode/
+.idea/
+.cursor/
+*.swp
+*.swo
+*~
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+*.pid
+*.seed
+*.pid.lock
+
+# Build outputs
+dist/
+build/
+*.tar.gz
+
+# OS
+Thumbs.db
+Desktop.ini

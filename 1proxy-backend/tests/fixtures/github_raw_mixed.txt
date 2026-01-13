@@ -1,0 +1,11 @@
+# Mixed protocol proxy list
+192.168.1.1:8080
+192.168.1.2:3128
+
+vmess://eyJhZGQiOiIxMjcuMC4wLjEiLCJwb3J0Ijo0NDMsImlkIjoidGVzdC11dWlkIn0=
+
+vless://test-uuid@example.com:443?type=tcp&encryption=none
+
+trojan://password123@trojan-server.com:443?sni=example.com
+
+ss://YWVzLTI1Ni1nY206cGFzc3dvcmQ@ss-server.com:8388
