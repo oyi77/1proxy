@@ -8,6 +8,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    JSON,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -106,6 +107,15 @@ class Proxy(Base):
         "ValidationHistory", back_populates="proxy", cascade="all, delete-orphan"
     )
 
+    __table_args__ = (
+        Index(
+            "idx_proxy_working_status_quality",
+            "is_working",
+            "validation_status",
+            "quality_score",
+        ),
+    )
+
 
 class ValidationHistory(Base):
     __tablename__ = "validation_history"
@@ -127,3 +137,25 @@ class ValidationHistory(Base):
     error_message = Column(Text, nullable=True)
 
     proxy = relationship("Proxy", back_populates="validation_history")
+
+
+class CandidateSource(Base):
+    __tablename__ = "candidate_sources"
+
+    id = Column(Integer, primary_key=True, index=True)
+    url = Column(Text, nullable=False, unique=True, index=True)
+    domain = Column(String(255), nullable=True, index=True)
+    discovery_method = Column(String(50), nullable=False)  # github, search, ai
+    status = Column(
+        String(20), default="pending", nullable=False, index=True
+    )  # pending, validating, approved, rejected
+    confidence_score = Column(Integer, default=0, index=True)
+    proxies_found_count = Column(Integer, default=0)
+    last_checked_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    fail_count = Column(Integer, default=0)
+    meta_data = Column(JSON, nullable=True)
+
+    __table_args__ = (
+        Index("idx_candidate_status_score", "status", "confidence_score"),
+    )

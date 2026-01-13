@@ -1,20 +1,80 @@
-from fastapi import FastAPI, HTTPException, Query, Depends
+from fastapi import FastAPI, HTTPException, Query, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from app.models import SourceConfig, SourceType
 from app.grabber import GitHubGrabber
 from app.sources import SourceRegistry
 from app.database import init_db, AsyncSessionLocal, get_db
 from app.db_storage import db_storage
 from app.routers import auth, sources, proxies, notifications, validation, admin
+from app.dependencies import require_admin
+from app.db_models import User
 from app.background_validator import background_validation_worker
 import asyncio
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+# Configure rate limiting
+limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
     title="1proxy API",
     description="Robust, Free, Fast Proxy Aggregation Platform - Community-Driven Multi-User Platform",
     version="2.0.0",
+)
+
+# Add rate limiter state
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+# Global exception handler to prevent leaking internal errors
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    Catch all unhandled exceptions and return a safe error message.
+    Log the full error details for debugging.
+    """
+    import uuid
+    import traceback
+
+    error_id = str(uuid.uuid4())[:8]
+    logger.error(
+        f"Unhandled exception [{error_id}]: {exc}",
+        exc_info=True,
+        extra={
+            "error_id": error_id,
+            "path": request.url.path,
+            "method": request.method,
+            "traceback": traceback.format_exc(),
+        },
+    )
+
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "An internal error occurred. Please try again later.",
+            "error_id": error_id,
+        },
+    )
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost:8000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.add_middleware(
@@ -51,10 +111,12 @@ async def startup():
             )
             await db_storage.seed_admin_sources(session, admin.id)
             await session.commit()
-            print("✅ Admin user created/verified: {admin.username} (ID: {admin.id})")
-            print("✅ Admin sources seeded")
+            logger.info(
+                f"✅ Admin user created/verified: {admin.username} (ID: {admin.id})"
+            )
+            logger.info("✅ Admin sources seeded")
         except Exception as e:
-            print(f"⚠️  Startup error (non-critical): {e}")
+            logger.warning(f"⚠️  Startup error (non-critical): {e}")
             await session.rollback()
 
     asyncio.create_task(
@@ -100,7 +162,9 @@ async def health_check(session: AsyncSession = Depends(get_db)):
 
 
 @app.post("/api/v1/proxies/scrape", response_model=dict)
-async def scrape_proxies(source: SourceConfig):
+async def scrape_proxies(
+    source: SourceConfig, current_user: User = Depends(require_admin)
+):
     async with AsyncSessionLocal() as session:
         try:
             proxies = await grabber.extract_proxies(source)
@@ -210,8 +274,8 @@ async def get_stats(session: AsyncSession = Depends(get_db)):
     return stats
 
 
-@app.get("/api/v1/proxies/demo")
-async def demo_scrape():
+@app.post("/api/v1/proxies/demo")
+async def demo_scrape(current_user: User = Depends(require_admin)):
     async with AsyncSessionLocal() as session:
         source = SourceConfig(
             url="https://raw.githubusercontent.com/clarketm/proxy-list/master/proxy-list-raw.txt",
@@ -283,7 +347,7 @@ async def list_sources(session: AsyncSession = Depends(get_db)):
 
 
 @app.post("/api/v1/proxies/scrape-all")
-async def scrape_all_sources():
+async def scrape_all_sources(current_user: User = Depends(require_admin)):
     async with AsyncSessionLocal() as session:
         sources = SourceRegistry.get_enabled_sources()
         results = []

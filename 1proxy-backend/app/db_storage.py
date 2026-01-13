@@ -1,10 +1,15 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, insert
+from sqlalchemy.orm import selectinload
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from typing import List, Optional
 from datetime import datetime
+import logging
 
 from app.db_models import User, ProxySource, Proxy
 from app.validator import proxy_validator
+
+logger = logging.getLogger(__name__)
 
 
 class DatabaseStorage:
@@ -121,13 +126,21 @@ class DatabaseStorage:
         return await self.add_proxy(session, proxy_data, source_id)
 
     async def add_proxies(self, session: AsyncSession, proxies_data: List[dict]) -> int:
-        added_count = 0
+        """
+        Efficiently add proxies using bulk insert with ON CONFLICT DO UPDATE.
+        This avoids N queries for N proxies and instead uses a single bulk operation.
+        """
+        if not proxies_data:
+            return 0
+
+        now = datetime.utcnow()
+        prepared_data = []
+
         for proxy_data in proxies_data:
             try:
-                # Extract URL from data - it might be in different fields
+                # Extract or construct URL
                 url = proxy_data.get("url")
                 if not url:
-                    # Construct URL from ip:port if url is not available
                     ip = proxy_data.get("ip")
                     port = proxy_data.get("port")
                     protocol = proxy_data.get("protocol", "http")
@@ -136,38 +149,92 @@ class DatabaseStorage:
                     else:
                         continue
 
+                # Prepare data for bulk insert
+                prepared_data.append(
+                    {
+                        "url": url,
+                        "protocol": proxy_data.get("protocol", "http"),
+                        "ip": proxy_data.get("ip"),
+                        "port": proxy_data.get("port"),
+                        "country_code": proxy_data.get("country_code"),
+                        "country_name": proxy_data.get("country_name"),
+                        "city": proxy_data.get("city"),
+                        "latency_ms": proxy_data.get("latency_ms"),
+                        "speed_mbps": proxy_data.get("speed_mbps"),
+                        "anonymity": proxy_data.get("anonymity"),
+                        "proxy_type": proxy_data.get("proxy_type"),
+                        "quality_score": proxy_data.get("quality_score"),
+                        "is_working": True,
+                        "validation_status": proxy_data.get(
+                            "validation_status", "pending"
+                        ),
+                        "last_validated": proxy_data.get("last_validated"),
+                        "first_seen": now,
+                        "last_seen": now,
+                        "created_at": now,
+                        "updated_at": now,
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error preparing proxy data: {e}")
+                continue
+
+        if not prepared_data:
+            return 0
+
+        try:
+            # Use SQLite's INSERT OR REPLACE for upsert behavior
+            # On conflict (duplicate URL), update last_seen and updated_at
+            stmt = sqlite_insert(Proxy).values(prepared_data)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["url"],
+                set_={
+                    "last_seen": now,
+                    "updated_at": now,
+                },
+            )
+
+            await session.execute(stmt)
+            await session.commit()
+
+            logger.info(
+                f"Successfully bulk inserted/updated {len(prepared_data)} proxies"
+            )
+            return len(prepared_data)
+
+        except Exception as e:
+            logger.error(f"Error in bulk insert: {e}")
+            await session.rollback()
+            # Fallback to individual inserts if bulk fails
+            return await self._add_proxies_fallback(session, prepared_data)
+
+    async def _add_proxies_fallback(
+        self, session: AsyncSession, proxies_data: List[dict]
+    ) -> int:
+        """Fallback method for adding proxies one by one if bulk insert fails."""
+        added_count = 0
+        now = datetime.utcnow()
+
+        for proxy_data in proxies_data:
+            try:
+                url = proxy_data.get("url")
+                if not url:
+                    continue
+
+                # Check if exists
                 result = await session.execute(select(Proxy).where(Proxy.url == url))
                 existing = result.scalar_one_or_none()
 
                 if existing:
-                    existing.last_seen = datetime.utcnow()
-                    existing.updated_at = datetime.utcnow()
+                    existing.last_seen = now
+                    existing.updated_at = now
                 else:
-                    proxy = Proxy(
-                        url=url,
-                        protocol=proxy_data.get("protocol", "http"),
-                        ip=proxy_data.get("ip"),
-                        port=proxy_data.get("port"),
-                        country_code=proxy_data.get("country_code"),
-                        country_name=proxy_data.get("country_name"),
-                        city=proxy_data.get("city"),
-                        latency_ms=proxy_data.get("latency_ms"),
-                        speed_mbps=proxy_data.get("speed_mbps"),
-                        anonymity=proxy_data.get("anonymity"),
-                        proxy_type=proxy_data.get("proxy_type"),
-                        quality_score=proxy_data.get("quality_score"),
-                        is_working=True,
-                        validation_status=proxy_data.get(
-                            "validation_status", "pending"
-                        ),
-                        last_validated=proxy_data.get("last_validated"),
-                        first_seen=datetime.utcnow(),
-                        last_seen=datetime.utcnow(),
-                    )
+                    proxy = Proxy(**proxy_data)
                     session.add(proxy)
                     added_count += 1
+
             except Exception as e:
-                print(f"Error adding proxy: {e}")
+                logger.error(f"Error in fallback insert for proxy: {e}")
                 continue
 
         await session.commit()
@@ -250,8 +317,14 @@ class DatabaseStorage:
         offset: int = 0,
         order_by: str = "quality_score",
     ) -> tuple[List[Proxy], int]:
-        query = select(Proxy).where(
-            Proxy.is_working == is_working, Proxy.validation_status == validation_status
+        # Use selectinload to prevent N+1 query problem when accessing proxy.source
+        query = (
+            select(Proxy)
+            .options(selectinload(Proxy.source))
+            .where(
+                Proxy.is_working == is_working,
+                Proxy.validation_status == validation_status,
+            )
         )
 
         if protocol:
@@ -325,25 +398,38 @@ class DatabaseStorage:
         return result.scalar_one_or_none()
 
     async def get_stats(self, session: AsyncSession) -> dict:
-        total_result = await session.execute(
-            select(func.count())
-            .select_from(Proxy)
+        """
+        Get proxy statistics efficiently using a single GROUP BY query
+        instead of multiple separate queries.
+        """
+        # Single query with GROUP BY for protocol counts
+        result = await session.execute(
+            select(Proxy.protocol, func.count(Proxy.id).label("count"))
             .where(Proxy.validation_status == "validated")
+            .group_by(Proxy.protocol)
         )
-        total = total_result.scalar()
 
-        protocols = ["http", "https", "vmess", "vless", "trojan", "shadowsocks"]
         by_protocol = {}
+        total = 0
 
-        for protocol in protocols:
-            result = await session.execute(
-                select(func.count())
-                .select_from(Proxy)
-                .where(
-                    Proxy.protocol == protocol, Proxy.validation_status == "validated"
-                )
-            )
-            by_protocol[protocol] = result.scalar()
+        for row in result:
+            protocol = row.protocol if row.protocol else "unknown"
+            count = row.count
+            by_protocol[protocol] = count
+            total += count
+
+        # Ensure all expected protocols are present (even if 0)
+        expected_protocols = [
+            "http",
+            "https",
+            "vmess",
+            "vless",
+            "trojan",
+            "shadowsocks",
+        ]
+        for protocol in expected_protocols:
+            if protocol not in by_protocol:
+                by_protocol[protocol] = 0
 
         return {"total_proxies": total, "by_protocol": by_protocol}
 

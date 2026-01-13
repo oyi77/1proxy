@@ -11,9 +11,7 @@ const nextConfig = {
       },
     ],
   },
-  experimental: {
-    outputFileTracingRoot: '/Users/paijo/1proxy'
-  }
+  outputFileTracingRoot: undefined,
 }
 
 module.exports = nextConfig

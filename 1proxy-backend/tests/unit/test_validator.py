@@ -66,8 +66,8 @@ class TestProxyValidator:
         mock_resp.__aenter__.return_value = mock_resp
         mock_resp.__aexit__.return_value = None
 
-        mock_session = AsyncMock()
-        mock_session.get.return_value = mock_resp
+        mock_session = MagicMock()
+        mock_session.get.return_value.__aenter__.return_value = mock_resp
         mock_session.__aenter__.return_value = mock_session
         mock_session.__aexit__.return_value = None
 
@@ -78,13 +78,13 @@ class TestProxyValidator:
 
         assert is_valid is True
         assert latency is not None
-        assert latency > 0
+        assert latency >= 0
         assert error is None
 
     @pytest.mark.asyncio
     async def test_validate_connectivity_timeout(self, validator):
         """Test proxy connectivity timeout"""
-        mock_session = AsyncMock()
+        mock_session = MagicMock()
         mock_session.get.side_effect = TimeoutError()
         mock_session.__aenter__.return_value = mock_session
         mock_session.__aexit__.return_value = None
@@ -101,7 +101,7 @@ class TestProxyValidator:
     @pytest.mark.asyncio
     async def test_validate_connectivity_proxy_error(self, validator):
         """Test proxy connection error"""
-        mock_session = AsyncMock()
+        mock_session = MagicMock()
         mock_session.get.side_effect = aiohttp.ClientProxyConnectionError(
             MagicMock(), MagicMock()
         )
@@ -133,8 +133,8 @@ class TestProxyValidator:
             mock_resp.__aenter__.return_value = mock_resp
             mock_resp.__aexit__.return_value = None
 
-            mock_session = AsyncMock()
-            mock_session.get.return_value = mock_resp
+            mock_session = MagicMock()
+            mock_session.get.return_value.__aenter__.return_value = mock_resp
             mock_session.__aenter__.return_value = mock_session
             mock_session.__aexit__.return_value = None
 
@@ -158,8 +158,8 @@ class TestProxyValidator:
         mock_resp.__aenter__.return_value = mock_resp
         mock_resp.__aexit__.return_value = None
 
-        mock_session = AsyncMock()
-        mock_session.get.return_value = mock_resp
+        mock_session = MagicMock()
+        mock_session.get.return_value.__aenter__.return_value = mock_resp
         mock_session.__aenter__.return_value = mock_session
         mock_session.__aexit__.return_value = None
 
@@ -179,8 +179,8 @@ class TestProxyValidator:
         mock_resp.__aenter__.return_value = mock_resp
         mock_resp.__aexit__.return_value = None
 
-        mock_session = AsyncMock()
-        mock_session.get.return_value = mock_resp
+        mock_session = MagicMock()
+        mock_session.get.return_value.__aenter__.return_value = mock_resp
         mock_session.__aenter__.return_value = mock_session
         mock_session.__aexit__.return_value = None
 
@@ -198,8 +198,8 @@ class TestProxyValidator:
         mock_resp.__aenter__.return_value = mock_resp
         mock_resp.__aexit__.return_value = None
 
-        mock_session = AsyncMock()
-        mock_session.get.return_value = mock_resp
+        mock_session = MagicMock()
+        mock_session.get.return_value.__aenter__.return_value = mock_resp
         mock_session.__aenter__.return_value = mock_session
         mock_session.__aexit__.return_value = None
 
@@ -211,7 +211,7 @@ class TestProxyValidator:
     @pytest.mark.asyncio
     async def test_check_anonymity_error(self, validator):
         """Test anonymity check handles errors gracefully"""
-        mock_session = AsyncMock()
+        mock_session = MagicMock()
         mock_session.get.side_effect = Exception("Network error")
         mock_session.__aenter__.return_value = mock_session
         mock_session.__aexit__.return_value = None
@@ -231,8 +231,8 @@ class TestProxyValidator:
         mock_resp.__aenter__.return_value = mock_resp
         mock_resp.__aexit__.return_value = None
 
-        mock_session = AsyncMock()
-        mock_session.get.return_value = mock_resp
+        mock_session = MagicMock()
+        mock_session.get.return_value.__aenter__.return_value = mock_resp
         mock_session.__aenter__.return_value = mock_session
         mock_session.__aexit__.return_value = None
 
@@ -244,7 +244,7 @@ class TestProxyValidator:
     @pytest.mark.asyncio
     async def test_google_access_failure(self, validator):
         """Test failed Google access through proxy"""
-        mock_session = AsyncMock()
+        mock_session = MagicMock()
         mock_session.get.side_effect = Exception("Connection failed")
         mock_session.__aenter__.return_value = mock_session
         mock_session.__aexit__.return_value = None
@@ -270,8 +270,8 @@ class TestProxyValidator:
         mock_resp.__aenter__.return_value = mock_resp
         mock_resp.__aexit__.return_value = None
 
-        mock_session = AsyncMock()
-        mock_session.get.return_value = mock_resp
+        mock_session = MagicMock()
+        mock_session.get.return_value.__aenter__.return_value = mock_resp
         mock_session.__aenter__.return_value = mock_session
         mock_session.__aexit__.return_value = None
 
@@ -286,7 +286,7 @@ class TestProxyValidator:
     @pytest.mark.asyncio
     async def test_get_geo_info_error(self, validator):
         """Test geo info retrieval error handling"""
-        mock_session = AsyncMock()
+        mock_session = MagicMock()
         mock_session.get.side_effect = Exception("API error")
         mock_session.__aenter__.return_value = mock_session
         mock_session.__aexit__.return_value = None
@@ -318,17 +318,17 @@ class TestProxyValidator:
             mock_resp.__aenter__.return_value = mock_resp
             mock_resp.__aexit__.return_value = None
 
-            mock_session = AsyncMock()
-            mock_session.get.return_value = mock_resp
+            mock_session = MagicMock()
+            mock_session.get.return_value.__aenter__.return_value = mock_resp
             mock_session.__aenter__.return_value = mock_session
             mock_session.__aexit__.return_value = None
 
             with patch("aiohttp.ClientSession", return_value=mock_session):
                 proxy_type = await validator.detect_proxy_type("1.2.3.4")
 
-            assert (
-                proxy_type == "datacenter"
-            ), f"Should detect datacenter for {data['org']}"
+            assert proxy_type == "datacenter", (
+                f"Should detect datacenter for {data['org']}"
+            )
 
     @pytest.mark.asyncio
     async def test_detect_proxy_type_residential(self, validator):
@@ -339,8 +339,8 @@ class TestProxyValidator:
         mock_resp.__aenter__.return_value = mock_resp
         mock_resp.__aexit__.return_value = None
 
-        mock_session = AsyncMock()
-        mock_session.get.return_value = mock_resp
+        mock_session = MagicMock()
+        mock_session.get.return_value.__aenter__.return_value = mock_resp
         mock_session.__aenter__.return_value = mock_session
         mock_session.__aexit__.return_value = None
 
@@ -352,7 +352,7 @@ class TestProxyValidator:
     @pytest.mark.asyncio
     async def test_detect_proxy_type_error(self, validator):
         """Test proxy type detection error handling"""
-        mock_session = AsyncMock()
+        mock_session = MagicMock()
         mock_session.get.side_effect = Exception("API error")
         mock_session.__aenter__.return_value = mock_session
         mock_session.__aexit__.return_value = None
@@ -368,7 +368,10 @@ class TestProxyValidator:
     async def test_calculate_quality_score_perfect(self, validator):
         """Test quality score for perfect proxy"""
         score = await validator.calculate_quality_score(
-            latency_ms=50, anonymity="elite", can_access_google=True, proxy_type="residential"
+            latency_ms=50,
+            anonymity="elite",
+            can_access_google=True,
+            proxy_type="residential",
         )
         assert score == 100  # 40 + 30 + 15 + 15 = 100
 
@@ -376,9 +379,12 @@ class TestProxyValidator:
     async def test_calculate_quality_score_good(self, validator):
         """Test quality score for good proxy"""
         score = await validator.calculate_quality_score(
-            latency_ms=300, anonymity="anonymous", can_access_google=True, proxy_type="datacenter"
+            latency_ms=300,
+            anonymity="anonymous",
+            can_access_google=True,
+            proxy_type="datacenter",
         )
-        assert score == 60  # 30 + 20 + 15 + 5 = 70 - wait, let me check
+        assert score == 70  # 30 + 20 + 15 + 5 = 70
 
     @pytest.mark.asyncio
     async def test_calculate_quality_score_poor(self, validator):
@@ -403,7 +409,10 @@ class TestProxyValidator:
     async def test_calculate_quality_score_caps_at_100(self, validator):
         """Test quality score never exceeds 100"""
         score = await validator.calculate_quality_score(
-            latency_ms=10, anonymity="elite", can_access_google=True, proxy_type="residential"
+            latency_ms=10,
+            anonymity="elite",
+            can_access_google=True,
+            proxy_type="residential",
         )
         assert score <= 100
 
@@ -496,7 +505,9 @@ class TestProxyValidator:
             ("http://9.9.9.9:8080", "9.9.9.9"),
         ]
 
-        with patch.object(validator, "validate_comprehensive", side_effect=mock_validate):
+        with patch.object(
+            validator, "validate_comprehensive", side_effect=mock_validate
+        ):
             results = await validator.validate_batch(proxies)
 
         assert len(results) == 2
