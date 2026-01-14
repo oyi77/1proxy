@@ -1,16 +1,10 @@
-import os
 import httpx
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db_models import User
 from app.auth import create_access_token
-
-GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID", "")
-GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET", "")
-
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+from app.config import settings
 
 
 class OAuthHandler:
@@ -21,8 +15,8 @@ class OAuthHandler:
                 "https://github.com/login/oauth/access_token",
                 headers={"Accept": "application/json"},
                 data={
-                    "client_id": GITHUB_CLIENT_ID,
-                    "client_secret": GITHUB_CLIENT_SECRET,
+                    "client_id": settings.GITHUB_CLIENT_ID,
+                    "client_secret": settings.GITHUB_CLIENT_SECRET,
                     "code": code,
                 },
             )
@@ -86,8 +80,8 @@ class OAuthHandler:
             token_response = await client.post(
                 "https://oauth2.googleapis.com/token",
                 data={
-                    "client_id": GOOGLE_CLIENT_ID,
-                    "client_secret": GOOGLE_CLIENT_SECRET,
+                    "client_id": settings.GOOGLE_CLIENT_ID,
+                    "client_secret": settings.GOOGLE_CLIENT_SECRET,
                     "code": code,
                     "grant_type": "authorization_code",
                     "redirect_uri": redirect_uri,

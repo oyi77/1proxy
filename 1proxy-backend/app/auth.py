@@ -3,20 +3,10 @@ from datetime import datetime, timedelta
 from typing import Optional
 from jose import jwt, JWTError
 from passlib.context import CryptContext
+from app.config import settings
 
-# Get SECRET_KEY from environment - NO DEFAULT for security
-SECRET_KEY = os.getenv("SECRET_KEY")
-if (
-    not SECRET_KEY
-    or SECRET_KEY == "your-secret-key-change-in-production-VERY-IMPORTANT"
-):
-    raise RuntimeError(
-        "🔐 CRITICAL: SECRET_KEY must be set in environment variables!\n"
-        "   Set a strong secret key (min 32 characters):\n"
-        "   export SECRET_KEY='your-secure-random-key-here'\n"
-        "   Or add to .env file: SECRET_KEY=your-secure-random-key-here"
-    )
-
+# Settings from central config
+SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
 

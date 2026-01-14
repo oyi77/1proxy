@@ -1,12 +1,14 @@
 # Core framework
-fastapi==0.109.0
-uvicorn==0.27.0
-pydantic==2.5.3
-pydantic-settings==2.1.0
+fastapi>=0.115.0
+uvicorn>=0.32.0
+pydantic>=2.10.0
+pydantic-settings>=2.6.0
 
 # Async HTTP
 aiohttp==3.9.1
 aiofiles==23.2.1
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
 
 # Rate Limiting
 slowapi>=0.1.9
@@ -18,6 +20,7 @@ pytest-cov==4.1.0
 aioresponses==0.7.6
 
 # Utilities
+python-dotenv>=1.0.0
 python-dateutil==2.8.2
 sqlalchemy>=2.0.23
 alembic>=1.13.1

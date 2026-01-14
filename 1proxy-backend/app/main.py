@@ -1,3 +1,6 @@
+# FastAPI Application Entry Point
+from app.config import settings
+
 from fastapi import FastAPI, HTTPException, Query, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -69,22 +72,24 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+)
+
+# CORS middleware configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8000"],
+    allow_origins=[
+        settings.FRONTEND_URL,
+        settings.API_URL,
+        "http://localhost:3000",
+        "http://localhost:8000"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 app.include_router(auth.router)
 app.include_router(sources.router)
 app.include_router(proxies.router)
@@ -101,7 +106,7 @@ async def startup():
 
     async with AsyncSessionLocal() as session:
         try:
-            admin = await db_storage.get_or_create_user(
+            admin_user = await db_storage.get_or_create_user(
                 session=session,
                 oauth_provider="local",
                 oauth_id="admin",
@@ -109,18 +114,25 @@ async def startup():
                 username="admin",
                 role="admin",
             )
-            await db_storage.seed_admin_sources(session, admin.id)
+            await db_storage.seed_admin_sources(session, admin_user.id)
             await session.commit()
             logger.info(
-                f"✅ Admin user created/verified: {admin.username} (ID: {admin.id})"
+                f"✅ Admin user created/verified: {admin_user.username} (ID: {admin_user.id})"
             )
             logger.info("✅ Admin sources seeded")
         except Exception as e:
             logger.warning(f"⚠️  Startup error (non-critical): {e}")
             await session.rollback()
 
+    # Start background workers
     asyncio.create_task(
         background_validation_worker(batch_size=50, interval_seconds=60)
+    )
+    
+    # Import and start auto-scraper
+    from app.background_validator import background_scraper_worker
+    asyncio.create_task(
+        background_scraper_worker(interval_minutes=10)  # Scrape every 10 minutes
     )
 
 

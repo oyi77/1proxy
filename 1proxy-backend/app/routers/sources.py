@@ -48,6 +48,38 @@ class SourceResponse(BaseModel):
         from_attributes = True
 
 
+class UserStats(BaseModel):
+    total_sources: int
+    active_sources: int
+    total_proxies_contributed: int
+    avg_success_rate: float
+
+
+@router.get("/my-stats", response_model=UserStats)
+async def get_my_stats(
+    current_user: User = Depends(require_user), session: AsyncSession = Depends(get_db)
+):
+    result = await session.execute(
+        select(ProxySource).where(ProxySource.user_id == current_user.id)
+    )
+    sources = result.scalars().all()
+
+    total_sources = len(sources)
+    active_sources = sum(1 for s in sources if s.enabled)
+    total_proxies_contributed = sum(s.total_scraped for s in sources)
+
+    avg_success_rate = 0.0
+    if total_sources > 0:
+        avg_success_rate = sum(s.success_rate for s in sources) / total_sources
+
+    return UserStats(
+        total_sources=total_sources,
+        active_sources=active_sources,
+        total_proxies_contributed=total_proxies_contributed,
+        avg_success_rate=avg_success_rate,
+    )
+
+
 @router.get("/my-sources", response_model=List[SourceResponse])
 async def get_my_sources(
     current_user: User = Depends(require_user), session: AsyncSession = Depends(get_db)

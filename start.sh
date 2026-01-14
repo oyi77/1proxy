@@ -3,10 +3,20 @@ set -e
 
 echo "🚀 Starting 1proxy Platform..."
 
+# Copy .env from root to backend if it exists
+if [ -f ".env" ]; then
+    echo "📋 Copying .env to backend directory..."
+    cp .env 1proxy-backend/.env
+    echo "✅ .env synced to backend"
+elif [ ! -f "1proxy-backend/.env" ]; then
+    echo "⚠️  No .env file found. OAuth features will not work."
+    echo "ℹ️  Copy .env.example to .env and configure your credentials"
+fi
+
 echo ""
 echo "📦 Starting Backend (FastAPI)..."
 cd 1proxy-backend
-PYTHONPATH=/Users/paijo/1proxy/1proxy-backend uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+python run.py &
 BACKEND_PID=$!
 cd ..
 

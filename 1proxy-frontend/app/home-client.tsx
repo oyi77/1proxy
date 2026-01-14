@@ -18,7 +18,6 @@ export function HomeClient() {
   const [totalProxies, setTotalProxies] = useState(0);
   const [loading, setLoading] = useState(true);
   const [tableLoading, setTableLoading] = useState(false);
-  const [scraping, setScraping] = useState(false);
   const [filter, setFilter] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(0);
   const limit = 15;
@@ -53,23 +52,6 @@ export function HomeClient() {
     } finally {
       setTableLoading(false);
       setLoading(false);
-    }
-  };
-
-  const handleScrapeDemo = async () => {
-    setScraping(true);
-    try {
-      const result = await api.scrapeDemo();
-      alert(
-        `Scraped ${result.scraped} proxies!\nAdded: ${result.added}\nTotal: ${result.total_stored}`
-      );
-      await loadStats();
-      await loadProxies();
-    } catch (error) {
-      console.error("Error scraping:", error);
-      alert("Failed to scrape demo proxies");
-    } finally {
-      setScraping(false);
     }
   };
 
@@ -333,18 +315,18 @@ export function HomeClient() {
                   <div className="flex flex-wrap gap-4">
                     <button
                       onClick={() => setActiveTab("rotation")}
-                      className="retro-button px-6 py-3 font-bold rounded-lg text-lg"
+                      className="retro-button px-4 py-2 font-bold rounded-lg text-xs"
                       style={{
                         backgroundColor: "#FFFFFF",
                         color: "var(--retro-purple)",
-                        fontFamily: "'Bangers', cursive",
+                        fontFamily: "'Press Start 2P', 'Courier New', monospace",
                       }}
                     >
                       Use Proxy Rotator
                     </button>
                     <button
                       onClick={() => setActiveTab("list")}
-                      className="retro-button px-6 py-3 font-semibold rounded-lg text-lg"
+                      className="retro-button px-4 py-2 font-semibold rounded-lg text-xs"
                       style={{
                         backgroundColor: "rgba(255,255,255,0.3)",
                         color: "#FFFFFF",
@@ -504,25 +486,6 @@ export function HomeClient() {
                 >
                   View Sources
                 </Link>
-                <button
-                  onClick={handleScrapeDemo}
-                  disabled={scraping}
-                  className="retro-button px-6 py-3 rounded-lg flex items-center justify-center gap-2 font-bold"
-                  style={{
-                    backgroundColor: "var(--retro-blue)",
-                    color: "#FFFFFF",
-                    border: "3px solid #000000",
-                    fontFamily: "'Press Start 2P', 'Courier New', monospace",
-                    boxShadow: "4px 4px 0px #000000",
-                    opacity: scraping ? 0.5 : 1,
-                    cursor: scraping ? "not-allowed" : "pointer",
-                  }}
-                >
-                  {scraping && (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  )}
-                  {scraping ? "Scraping..." : "Scrape Demo"}
-                </button>
               </div>
 
               <ProxyTable
@@ -722,8 +685,8 @@ export function HomeClient() {
                     </p>
                     <div className="flex gap-4">
                       <a
-                        href="/rotator.py"
-                        download="rotator.py"
+                        href="/rotator.js"
+                        download="rotator.js"
                         className="retro-button px-6 py-3 font-bold rounded-lg flex items-center gap-2"
                         style={{
                           backgroundColor: "var(--retro-purple)",
@@ -744,7 +707,7 @@ export function HomeClient() {
                             d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
                           />
                         </svg>
-                        Download Rotator Script
+                        Download Rotator Script (Node.js)
                       </a>
                     </div>
                     <div
@@ -760,7 +723,7 @@ export function HomeClient() {
                           color: theme === "dark" ? "var(--dark-text)" : "#6B7280",
                         }}
                       >
-                        python3 rotator.py --port 8080 --country US --anonymity elite
+                        node rotator.js --port 8080 --country US
                       </p>
                     </div>
                   </div>

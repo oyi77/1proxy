@@ -9,11 +9,9 @@ from app.database import get_db
 from app.oauth import oauth_handler
 from app.dependencies import get_current_user
 from app.db_models import User
+from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
-
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
-GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID", "")
 
 
 class UserInfo(BaseModel):
@@ -46,7 +44,7 @@ async def get_current_user_info(
 @router.get("/github")
 async def github_login():
     return RedirectResponse(
-        url=f"https://github.com/login/oauth/authorize?client_id={GITHUB_CLIENT_ID}&scope=user:email"
+        url=f"https://github.com/login/oauth/authorize?client_id={settings.GITHUB_CLIENT_ID}&scope=user:email"
     )
 
 
@@ -57,12 +55,12 @@ async def github_callback(
     try:
         user, token = await oauth_handler.github_callback(code, session)
 
-        response = RedirectResponse(url=f"{FRONTEND_URL}/dashboard")
+        response = RedirectResponse(url=f"{settings.FRONTEND_URL}/dashboard")
         response.set_cookie(
             key="access_token",
             value=token,
             httponly=True,
-            secure=True if FRONTEND_URL.startswith("https") else False,
+            secure=True if settings.FRONTEND_URL.startswith("https") else False,
             samesite="lax",
             max_age=60 * 60 * 24 * 7,
         )
@@ -70,15 +68,13 @@ async def github_callback(
         return response
 
     except Exception as e:
-        return RedirectResponse(url=f"{FRONTEND_URL}/login?error={str(e)}")
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/login?error={str(e)}")
 
 
 @router.get("/google")
 async def google_login():
-    google_client_id = os.getenv("GOOGLE_CLIENT_ID", "")
-    redirect_uri = (
-        f"{os.getenv('API_URL', 'http://localhost:8000')}/auth/google/callback"
-    )
+    google_client_id = settings.GOOGLE_CLIENT_ID
+    redirect_uri = f"{settings.API_URL}/auth/google/callback"
 
     return RedirectResponse(
         url=f"https://accounts.google.com/o/oauth2/v2/auth?"
@@ -94,17 +90,15 @@ async def google_callback(
     code: str, response: Response, session: AsyncSession = Depends(get_db)
 ):
     try:
-        redirect_uri = (
-            f"{os.getenv('API_URL', 'http://localhost:8000')}/auth/google/callback"
-        )
+        redirect_uri = f"{settings.API_URL}/auth/google/callback"
         user, token = await oauth_handler.google_callback(code, redirect_uri, session)
 
-        response = RedirectResponse(url=f"{FRONTEND_URL}/dashboard")
+        response = RedirectResponse(url=f"{settings.FRONTEND_URL}/dashboard")
         response.set_cookie(
             key="access_token",
             value=token,
             httponly=True,
-            secure=True if FRONTEND_URL.startswith("https") else False,
+            secure=True if settings.FRONTEND_URL.startswith("https") else False,
             samesite="lax",
             max_age=60 * 60 * 24 * 7,
         )
@@ -112,7 +106,7 @@ async def google_callback(
         return response
 
     except Exception as e:
-        return RedirectResponse(url=f"{FRONTEND_URL}/login?error={str(e)}")
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/login?error={str(e)}")
 
 
 @router.post("/logout")

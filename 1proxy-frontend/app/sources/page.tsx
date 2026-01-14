@@ -3,14 +3,12 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useTheme } from "@/app/theme-provider";
-import { api, type Source, type ScrapeAllResult } from "@/lib/api";
+import { api, type Source } from "@/lib/api";
 
 export default function SourcesPage() {
   const { theme } = useTheme();
   const [sources, setSources] = useState<Source[]>([]);
   const [loading, setLoading] = useState(true);
-  const [scraping, setScraping] = useState(false);
-  const [results, setResults] = useState<ScrapeAllResult[]>([]);
 
   useEffect(() => {
     loadSources();
@@ -27,32 +25,17 @@ export default function SourcesPage() {
     }
   };
 
-  const handleScrapeAll = async () => {
-    setScraping(true);
-    setResults([]);
-    try {
-      const result = await api.scrapeAllSources();
-      setResults(result.results);
-      alert(
-        `Scrape completed!\n\nTotal scraped: ${result.total_scraped}\nTotal added: ${result.total_added}\nTotal stored: ${result.total_stored}`
-      );
-    } catch (error) {
-      console.error("Error scraping:", error);
-      alert("Failed to scrape sources");
-    } finally {
-      setScraping(false);
-    }
-  };
+
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{
         backgroundColor: theme === 'dark' ? 'var(--dark-bg)' : 'var(--light-bg)'
-      }}>
+      }} suppressHydrationWarning>
         <div className="text-xl animate-pulse" style={{
           fontFamily: "'Press Start 2P', 'Courier New', monospace",
           color: theme === 'dark' ? 'var(--dark-text)' : 'var(--light-text)'
-        }}>
+        }} suppressHydrationWarning>
           Loading sources...
         </div>
       </div>
@@ -64,6 +47,23 @@ export default function SourcesPage() {
       backgroundColor: theme === 'dark' ? 'var(--dark-bg)' : 'var(--light-bg)'
     }}>
       <div className="max-w-7xl mx-auto">
+        <div className="mb-6">
+          <Link
+            href="/"
+            className="retro-button px-4 py-2 rounded-lg font-bold inline-flex items-center gap-2"
+            style={{
+              backgroundColor: theme === 'dark' ? 'var(--dark-bg)' : '#F0F0F0',
+              color: theme === 'dark' ? 'var(--dark-text)' : '#1a1a1a',
+              fontFamily: "'Press Start 2P', 'Courier New', monospace",
+              border: '3px solid #000000',
+              boxShadow: '4px 4px 0px #000000',
+              fontSize: '0.7rem'
+            }}
+          >
+            ← Back
+          </Link>
+        </div>
+
         <header className="mb-8">
           <h1 className="text-4xl md:text-5xl font-bold mb-2" style={{
             fontFamily: "'Bangers', cursive",
@@ -84,38 +84,28 @@ export default function SourcesPage() {
           backgroundColor: theme === 'dark' ? 'var(--dark-card)' : '#FFFFFF',
           boxShadow: '6px 6px 0px #000000'
         }}>
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
-            <div>
-              <h2 className="text-2xl font-bold mb-2" style={{
-                fontFamily: "'Bangers', cursive",
-                color: 'var(--retro-blue)',
-                textShadow: '2px 2px 0px #000000'
-              }}>
-                {sources.filter((s) => s.enabled).length} Active Sources
-              </h2>
-              <p className="text-sm" style={{
-                fontFamily: "'Press Start 2P', 'Courier New', monospace",
-                color: theme === 'dark' ? 'var(--dark-text)' : '#6B7280'
-              }}>
-                {sources.length} total sources configured
-              </p>
-            </div>
-            <button
-              onClick={handleScrapeAll}
-              disabled={scraping}
-              className="retro-button px-6 py-3 rounded-lg font-bold"
-              style={{
-                backgroundColor: 'var(--retro-blue)',
-                color: '#FFFFFF',
-                fontFamily: "'Press Start 2P', 'Courier New', monospace",
-                border: '3px solid #000000',
-                boxShadow: '4px 4px 0px #000000',
-                opacity: scraping ? 0.5 : 1,
-                cursor: scraping ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {scraping ? "Scraping..." : "Scrape All"}
-            </button>
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold mb-2" style={{
+              fontFamily: "'Bangers', cursive",
+              color: 'var(--retro-blue)',
+              textShadow: '2px 2px 0px #000000'
+            }}>
+              {sources.filter((s) => s.enabled).length} Active Sources
+            </h2>
+            <p className="text-sm mb-2" style={{
+              fontFamily: "'Press Start 2P', 'Courier New', monospace",
+              color: theme === 'dark' ? 'var(--dark-text)' : '#6B7280'
+            }}>
+              {sources.length} total sources configured
+            </p>
+            <p className="text-xs px-4 py-2 rounded-lg inline-block" style={{
+              fontFamily: "'Press Start 2P', 'Courier New', monospace",
+              backgroundColor: 'var(--retro-blue)',
+              color: '#FFFFFF',
+              border: '2px solid #000000'
+            }}>
+              🔄 Auto-scraping every 10 minutes
+            </p>
           </div>
 
           <div className="overflow-x-auto">
@@ -166,7 +156,7 @@ export default function SourcesPage() {
                       /github\.com\/([^/]+\/[^/]+)/
                     );
                     const repoName = repoMatch ? repoMatch[1] : source.url;
-                    const result = results.find((r) => r.url === source.url);
+
 
                     return (
                       <tr
@@ -222,19 +212,9 @@ export default function SourcesPage() {
                           </span>
                         </td>
                         <td className="py-4 px-4">
-                          {result ? (
-                            result.status === "success" ? (
-                              <span style={{ color: '#10B981', fontFamily: "'Press Start 2P', 'Courier New', monospace" }}>
-                                ✓ {result.scraped} scraped, {result.added} added
-                              </span>
-                            ) : (
-                              <span style={{ color: '#EF4444', fontFamily: "'Press Start 2P', 'Courier New', monospace" }}>
-                                ✗ {result.error}
-                              </span>
-                            )
-                          ) : (
-                            <span style={{ color: '#9CA3AF', fontFamily: "'Press Start 2P', 'Courier New', monospace" }}>—</span>
-                          )}
+                          <span style={{ color: '#10B981', fontFamily: "'Press Start 2P', 'Courier New', monospace" }}>
+                            ✓ Auto-scraped
+                          </span>
                         </td>
                       </tr>
                     );
@@ -243,22 +223,6 @@ export default function SourcesPage() {
               </tbody>
             </table>
           </div>
-        </div>
-
-        <div>
-          <Link
-            href="/"
-            className="retro-button px-6 py-3 rounded-lg font-bold inline-block"
-            style={{
-              backgroundColor: theme === 'dark' ? 'var(--dark-bg)' : '#F0F0F0',
-              color: theme === 'dark' ? 'var(--dark-text)' : '#1a1a1a',
-              fontFamily: "'Press Start 2P', 'Courier New', monospace",
-              border: '3px solid #000000',
-              boxShadow: '4px 4px 0px #000000'
-            }}
-          >
-            ← Back to Dashboard
-          </Link>
         </div>
       </div>
     </div>
