@@ -38,15 +38,62 @@ export interface ProxiesResponse {
 }
 
 export interface Source {
+  id: number;
   url: string;
   type: string;
+  name?: string;
+  description?: string;
+  is_paid: boolean;
   enabled: boolean;
+  validated: boolean;
+  validation_error?: string;
+  total_scraped: number;
+  success_rate: number;
+  is_admin_source: boolean;
 }
 
 export interface SourcesResponse {
   total: number;
   enabled: number;
   sources: Source[];
+}
+
+export interface User {
+  id: number;
+  email: string;
+  username: string;
+  avatar_url?: string;
+  role: string;
+  created_at: string;
+}
+
+export interface UsersResponse {
+  total: number;
+  users: User[];
+}
+
+export interface ValidationStats {
+  total_proxies: number;
+  by_status: {
+    [key: string]: {
+      count: number;
+      avg_quality: number | null;
+      avg_latency: number | null;
+    };
+  };
+  summary: {
+    validated: number;
+    pending: number;
+    failed: number;
+    validation_rate_percent: number;
+  };
+}
+
+export interface QualityDistribution {
+  excellent: number;
+  good: number;
+  fair: number;
+  poor: number;
 }
 
 export interface ScrapeAllResult {
@@ -87,6 +134,21 @@ export const api = {
     return res.json();
   },
 
+  async getRandomProxy(exclude?: string[]): Promise<Proxy> {
+    const query = new URLSearchParams();
+    if (exclude && exclude.length > 0) query.set("exclude", exclude.join(","));
+    const res = await fetch(`${API_BASE}/api/v1/proxies/random?${query}`);
+    if (!res.ok) throw new Error("Failed to fetch random proxy");
+    return res.json();
+  },
+
+  async deleteProxy(id: number): Promise<void> {
+    const res = await fetch(`${API_BASE}/api/v1/proxies/${id}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) throw new Error("Failed to delete proxy");
+  },
+
   async scrapeDemo(): Promise<{
     message: string;
     source: string;
@@ -113,4 +175,36 @@ export const api = {
     if (!res.ok) throw new Error("Failed to scrape all sources");
     return res.json();
   },
+
+  async getAdminUsers(params?: { limit?: number; offset?: number }): Promise<UsersResponse> {
+    const query = new URLSearchParams();
+    if (params?.limit) query.set("limit", params.limit.toString());
+    if (params?.offset) query.set("offset", params.offset.toString());
+    const res = await fetch(`${API_BASE}/api/v1/admin/users?${query}`);
+    if (!res.ok) throw new Error("Failed to fetch admin users");
+    return res.json();
+  },
+
+  async triggerValidation(sourceId: number): Promise<{ message: string }> {
+    const res = await fetch(`${API_BASE}/api/v1/validation/trigger`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source_id: sourceId }),
+    });
+    if (!res.ok) throw new Error("Failed to trigger validation");
+    return res.json();
+  },
+
+  async getAdminValidationStats(): Promise<ValidationStats> {
+    const res = await fetch(`${API_BASE}/api/v1/admin/validation-stats`);
+    if (!res.ok) throw new Error("Failed to fetch validation stats");
+    return res.json();
+  },
+
+  async getAdminQualityDistribution(): Promise<QualityDistribution> {
+    const res = await fetch(`${API_BASE}/api/v1/admin/quality-distribution`);
+    if (!res.ok) throw new Error("Failed to fetch quality distribution");
+    return res.json();
+  },
 };
+

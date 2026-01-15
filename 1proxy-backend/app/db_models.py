@@ -159,3 +159,20 @@ class CandidateSource(Base):
     __table_args__ = (
         Index("idx_candidate_status_score", "status", "confidence_score"),
     )
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    type = Column(String(50), nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    message = Column(Text, nullable=False)
+    severity = Column(String(20), default="info", nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    read = Column(Boolean, default=False, index=True)
+
+    user = relationship("User", backref="notifications")

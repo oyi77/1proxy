@@ -1,6 +1,9 @@
 # 1proxy: Community-Driven Proxy Aggregation Platform
 
+![CI Status](https://github.com/NoeFabris/1proxy/actions/workflows/ci.yml/badge.svg)
+
 A high-performance, multi-user proxy aggregation platform where anyone can contribute proxy sources while maintaining public access to all proxies. Built with modern async Python, Next.js, and enterprise-grade validation.
+
 
 ## ✨ Key Features
 

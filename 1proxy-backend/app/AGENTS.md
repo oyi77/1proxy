@@ -11,6 +11,7 @@ Contains the central application logic for 1proxy, including the asynchronous da
 app/
 ├── routers/              # API endpoints (Proxies, Sources, Auth, Admin)
 ├── grabber/              # Multi-protocol scrapers (GitHub, Base64, Regex)
+├── hunter/               # Auto-discovery engine (→ see hunter/AGENTS.md)
 ├── models/               # Pydantic request/response schemas
 ├── utils/                # Shared helper functions (Base64, URL parsing)
 ├── db_storage.py         # Repository pattern (all SQLAlchemy queries)
@@ -30,6 +31,7 @@ app/
 | Adjust Quality Score | `validator.py` |
 | Modify Auth Flow | `auth.py` / `dependencies.py` |
 | Add new Scraper | `grabber/*.py` |
+| Add discovery strategy | `hunter/strategies/*.py` |
 | Define DB Schema | `db_models.py` |
 
 ## CONVENTIONS

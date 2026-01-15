@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, Cookie
+from fastapi import APIRouter, Depends, HTTPException, Response, Cookie, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
@@ -13,6 +13,12 @@ from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
+# Access limiter from app state via request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+
 
 class UserInfo(BaseModel):
     id: int
@@ -26,7 +32,9 @@ class UserInfo(BaseModel):
 
 
 @router.get("/me", response_model=UserInfo)
+@limiter.limit("60/minute")
 async def get_current_user_info(
+    request: Request,
     current_user: Optional[User] = Depends(get_current_user),
 ):
     if not current_user:
@@ -42,15 +50,20 @@ async def get_current_user_info(
 
 
 @router.get("/github")
-async def github_login():
+@limiter.limit("10/minute")
+async def github_login(request: Request):
     return RedirectResponse(
         url=f"https://github.com/login/oauth/authorize?client_id={settings.GITHUB_CLIENT_ID}&scope=user:email"
     )
 
 
 @router.get("/github/callback")
+@limiter.limit("20/minute")
 async def github_callback(
-    code: str, response: Response, session: AsyncSession = Depends(get_db)
+    request: Request,
+    code: str,
+    response: Response,
+    session: AsyncSession = Depends(get_db),
 ):
     try:
         user, token = await oauth_handler.github_callback(code, session)
@@ -72,7 +85,8 @@ async def github_callback(
 
 
 @router.get("/google")
-async def google_login():
+@limiter.limit("10/minute")
+async def google_login(request: Request):
     google_client_id = settings.GOOGLE_CLIENT_ID
     redirect_uri = f"{settings.API_URL}/auth/google/callback"
 
@@ -86,8 +100,12 @@ async def google_login():
 
 
 @router.get("/google/callback")
+@limiter.limit("20/minute")
 async def google_callback(
-    code: str, response: Response, session: AsyncSession = Depends(get_db)
+    request: Request,
+    code: str,
+    response: Response,
+    session: AsyncSession = Depends(get_db),
 ):
     try:
         redirect_uri = f"{settings.API_URL}/auth/google/callback"
@@ -110,7 +128,8 @@ async def google_callback(
 
 
 @router.post("/logout")
-async def logout(response: Response):
+@limiter.limit("30/minute")
+async def logout(request: Request, response: Response):
     response = Response(content={"message": "Logged out successfully"})
     response.delete_cookie(key="access_token")
     return response

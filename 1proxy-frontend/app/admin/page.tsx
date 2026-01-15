@@ -2,30 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTheme } from "@/app/theme-provider";
-
-interface ValidationStats {
-  total_proxies: number;
-  by_status: {
-    [key: string]: {
-      count: number;
-      avg_quality: number | null;
-      avg_latency: number | null;
-    };
-  };
-  summary: {
-    validated: number;
-    pending: number;
-    failed: number;
-    validation_rate_percent: number;
-  };
-}
-
-interface QualityDistribution {
-  excellent: number;
-  good: number;
-  fair: number;
-  poor: number;
-}
+import { api, type ValidationStats, type QualityDistribution } from "@/lib/api";
 
 export default function AdminPage() {
   const { theme } = useTheme();
@@ -35,19 +12,20 @@ export default function AdminPage() {
 
   const fetchStats = async () => {
     try {
-      const [statsRes, qualityRes] = await Promise.all([
-        fetch("http://localhost:8000/api/v1/admin/validation-stats"),
-        fetch("http://localhost:8000/api/v1/admin/quality-distribution"),
+      const [statsData, qualityData] = await Promise.all([
+        api.getAdminValidationStats(),
+        api.getAdminQualityDistribution(),
       ]);
 
-      if (statsRes.ok) setStats(await statsRes.json());
-      if (qualityRes.ok) setQuality(await qualityRes.json());
+      setStats(statsData);
+      setQuality(qualityData);
     } catch (error) {
       console.error("Failed to fetch admin stats:", error);
     } finally {
       setLoading(false);
     }
   };
+
 
   useEffect(() => {
     fetchStats();

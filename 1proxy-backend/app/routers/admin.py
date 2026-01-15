@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException, Query
+from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.database import get_db
@@ -6,16 +6,108 @@ from app.db_models import Proxy, User, CandidateSource, ProxySource
 from app.models.candidate import CandidateResponse
 from app.dependencies import require_admin
 from app.hunter.service import HunterService
-from typing import List
+from app.db_storage import db_storage
+from typing import List, Optional
+from pydantic import BaseModel
 
 # All admin endpoints require admin role
 router = APIRouter(
     prefix="/api/v1/admin", tags=["admin"], dependencies=[Depends(require_admin)]
 )
 
+# Access limiter from app state
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+
+
+class UserUpdateRole(BaseModel):
+    role: str
+
+
+class UserResponse(BaseModel):
+    id: int
+    email: str
+    username: str
+    role: str
+    created_at: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/users", response_model=dict)
+@limiter.limit("30/minute")
+async def list_users(
+    request: Request,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    session: AsyncSession = Depends(get_db),
+):
+    users, total = await db_storage.get_users(session, limit=limit, offset=offset)
+    return {
+        "total": total,
+        "count": len(users),
+        "offset": offset,
+        "limit": limit,
+        "users": [
+            {
+                "id": u.id,
+                "email": u.email,
+                "username": u.username,
+                "role": u.role,
+                "created_at": u.created_at.isoformat() if u.created_at else None,
+            }
+            for u in users
+        ],
+    }
+
+
+@router.get("/users/{user_id}", response_model=UserResponse)
+@limiter.limit("60/minute")
+async def get_user_details(
+    request: Request, user_id: int, session: AsyncSession = Depends(get_db)
+):
+    user = await db_storage.get_user_by_id(session, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+@router.put("/users/{user_id}/role", response_model=UserResponse)
+@limiter.limit("10/minute")
+async def update_user_role(
+    request: Request,
+    user_id: int,
+    role_data: UserUpdateRole,
+    session: AsyncSession = Depends(get_db),
+):
+    if role_data.role not in ["user", "admin"]:
+        raise HTTPException(status_code=400, detail="Invalid role")
+
+    user = await db_storage.update_user_role(session, user_id, role_data.role)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+@router.delete("/users/{user_id}")
+@limiter.limit("5/minute")
+async def delete_user(
+    request: Request, user_id: int, session: AsyncSession = Depends(get_db)
+):
+    # Prevent self-deletion if current user is the target
+    # This would require current_user from dependency, but we'll stick to basic admin check for now
+    success = await db_storage.delete_user(session, user_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"message": "User deleted successfully"}
+
 
 @router.post("/hunter/trigger")
-async def trigger_hunt(background_tasks: BackgroundTasks):
+@limiter.limit("5/minute")
+async def trigger_hunt(request: Request, background_tasks: BackgroundTasks):
     """
     Manually trigger the Hunter Protocol to find new proxy sources.
     """
@@ -25,7 +117,9 @@ async def trigger_hunt(background_tasks: BackgroundTasks):
 
 
 @router.get("/candidates", response_model=List[CandidateResponse])
+@limiter.limit("30/minute")
 async def list_candidates(
+    request: Request,
     status: str = "pending",
     limit: int = 50,
     offset: int = 0,
@@ -46,7 +140,10 @@ async def list_candidates(
 
 
 @router.post("/candidates/{id}/approve")
-async def approve_candidate(id: int, session: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def approve_candidate(
+    request: Request, id: int, session: AsyncSession = Depends(get_db)
+):
     """
     Approve a candidate source and promote it to a real ProxySource.
     """
@@ -91,7 +188,10 @@ async def approve_candidate(id: int, session: AsyncSession = Depends(get_db)):
 
 
 @router.get("/validation-stats")
-async def get_validation_stats(session: AsyncSession = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_validation_stats(
+    request: Request, session: AsyncSession = Depends(get_db)
+):
     result = await session.execute(
         select(
             Proxy.validation_status,
@@ -131,7 +231,10 @@ async def get_validation_stats(session: AsyncSession = Depends(get_db)):
 
 
 @router.get("/quality-distribution")
-async def get_quality_distribution(session: AsyncSession = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_quality_distribution(
+    request: Request, session: AsyncSession = Depends(get_db)
+):
     result = await session.execute(
         select(Proxy.quality_score, func.count(Proxy.id).label("count"))
         .where(Proxy.validation_status == "validated")
@@ -161,8 +264,9 @@ async def get_quality_distribution(session: AsyncSession = Depends(get_db)):
 
 
 @router.get("/recent-validations")
+@limiter.limit("60/minute")
 async def get_recent_validations(
-    limit: int = 20, session: AsyncSession = Depends(get_db)
+    request: Request, limit: int = 20, session: AsyncSession = Depends(get_db)
 ):
     result = await session.execute(
         select(Proxy)

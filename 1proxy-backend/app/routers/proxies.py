@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, HTTPException, Request
+from fastapi import APIRouter, Depends, Query, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from pydantic import BaseModel
@@ -11,6 +11,10 @@ import time
 
 from app.database import get_db
 from app.db_storage import db_storage
+from app.dependencies import require_admin
+
+# Rate limiter for this router
+limiter = Limiter(key_func=get_remote_address)
 
 # Rate limiter for this router
 limiter = Limiter(key_func=get_remote_address)
@@ -447,16 +451,31 @@ async def test_proxy(request: Request, test_request: ProxyTestRequest):
             error=f"Connection error: {str(e)}",
             tested_at=tested_at,
         )
-    except Exception as e:
-        return ProxyTestResponse(
-            proxy_url=test_request.proxy_url,
-            target_url=test_request.target_url,
-            working=False,
-            latency_ms=None,
-            status_code=None,
-            error=f"Test failed: {str(e)}",
-            tested_at=tested_at,
-        )
+        except Exception as e:
+            return ProxyTestResponse(
+                proxy_url=test_request.proxy_url,
+                target_url=test_request.target_url,
+                working=False,
+                latency_ms=None,
+                status_code=None,
+                error=f"Test failed: {str(e)}",
+                tested_at=tested_at,
+            )
+
+
+@router.delete("/proxies/{proxy_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
+async def delete_proxy(
+    request: Request,
+    proxy_id: int,
+    session: AsyncSession = Depends(get_db),
+    admin_user=Depends(require_admin),
+):
+    success = await db_storage.delete_proxy(session, proxy_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Proxy not found")
+    return None
+
 
         start_time = time.time()
 
@@ -501,13 +520,19 @@ async def test_proxy(request: Request, test_request: ProxyTestRequest):
             error=f"Connection error: {str(e)}",
             tested_at=tested_at,
         )
-    except Exception as e:
-        return ProxyTestResponse(
-            proxy_url=request.proxy_url,
-            target_url=request.target_url,
-            working=False,
-            latency_ms=None,
-            status_code=None,
-            error=f"Test failed: {str(e)}",
-            tested_at=tested_at,
-        )
+
+
+@router.delete("/proxies/{proxy_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
+async def delete_proxy(
+    request: Request,
+    proxy_id: int,
+    current_user: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+):
+    from app.db_models import User  # Avoid circular import
+
+    success = await db_storage.delete_proxy(session, proxy_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Proxy not found")
+    return None

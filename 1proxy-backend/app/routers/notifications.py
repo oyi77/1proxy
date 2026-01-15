@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, BackgroundTasks
+from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from typing import List, Optional
@@ -7,12 +7,13 @@ from datetime import datetime
 from app.database import get_db
 from app.dependencies import require_user
 from app.db_models import User
+from app.db_storage import db_storage
 
 router = APIRouter(prefix="/api/v1", tags=["notifications"])
 
 
-class Notification(BaseModel):
-    id: str
+class NotificationResponse(BaseModel):
+    id: int
     type: str
     title: str
     message: str
@@ -20,67 +21,57 @@ class Notification(BaseModel):
     created_at: datetime
     read: bool
 
-
-notifications_store: dict[int, List[Notification]] = {}
+    class Config:
+        from_attributes = True
 
 
 async def create_notification(
+    db: AsyncSession,
     user_id: int,
     notification_type: str,
     title: str,
     message: str,
     severity: str = "info",
 ):
-    if user_id not in notifications_store:
-        notifications_store[user_id] = []
-
-    notification = Notification(
-        id=f"{user_id}_{datetime.utcnow().timestamp()}",
-        type=notification_type,
+    await db_storage.create_notification(
+        db,
+        user_id=user_id,
+        notification_type=notification_type,
         title=title,
         message=message,
         severity=severity,
-        created_at=datetime.utcnow(),
-        read=False,
     )
 
-    notifications_store[user_id].insert(0, notification)
 
-    if len(notifications_store[user_id]) > 50:
-        notifications_store[user_id] = notifications_store[user_id][:50]
-
-
-@router.get("/notifications", response_model=List[Notification])
+@router.get("/notifications", response_model=List[NotificationResponse])
 async def get_notifications(
-    current_user: User = Depends(require_user), unread_only: bool = False
+    current_user: User = Depends(require_user),
+    unread_only: bool = False,
+    db: AsyncSession = Depends(get_db),
 ):
-    user_notifications = notifications_store.get(current_user.id, [])
-
-    if unread_only:
-        return [n for n in user_notifications if not n.read]
-
-    return user_notifications
+    return await db_storage.get_notifications(
+        db, user_id=current_user.id, unread_only=unread_only
+    )
 
 
 @router.post("/notifications/{notification_id}/read")
 async def mark_notification_read(
-    notification_id: str, current_user: User = Depends(require_user)
+    notification_id: int,
+    current_user: User = Depends(require_user),
+    db: AsyncSession = Depends(get_db),
 ):
-    user_notifications = notifications_store.get(current_user.id, [])
+    success = await db_storage.mark_notification_read(
+        db, user_id=current_user.id, notification_id=notification_id
+    )
+    if not success:
+        raise HTTPException(status_code=404, detail="Notification not found")
 
-    for notification in user_notifications:
-        if notification.id == notification_id:
-            notification.read = True
-            return {"message": "Notification marked as read"}
-
-    return {"error": "Notification not found"}
+    return {"message": "Notification marked as read"}
 
 
 @router.post("/notifications/read-all")
-async def mark_all_read(current_user: User = Depends(require_user)):
-    user_notifications = notifications_store.get(current_user.id, [])
-
-    for notification in user_notifications:
-        notification.read = True
-
-    return {"message": f"Marked {len(user_notifications)} notifications as read"}
+async def mark_all_read(
+    current_user: User = Depends(require_user), db: AsyncSession = Depends(get_db)
+):
+    count = await db_storage.mark_all_notifications_read(db, user_id=current_user.id)
+    return {"message": f"Marked {count} notifications as read"}

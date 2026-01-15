@@ -1,5 +1,8 @@
 import aiohttp
 import asyncio
+import socket
+import ipaddress
+from urllib.parse import urlparse
 from typing import Optional, List
 from pydantic import BaseModel
 
@@ -19,7 +22,38 @@ class SourceValidator:
         self.timeout = aiohttp.ClientTimeout(total=timeout)
         self.grabber = GitHubGrabber()
 
+    def is_internal_url(self, url: str) -> bool:
+        """Check if the URL points to an internal network (SSRF protection)."""
+        try:
+            parsed = urlparse(url)
+            hostname = parsed.hostname
+            if not hostname:
+                return True
+
+            # Check for common internal hostnames
+            if hostname.lower() in ["localhost", "127.0.0.1", "::1", "0.0.0.0"]:
+                return True
+
+            # Resolve hostname to IP and check if it's private
+            addr_info = socket.getaddrinfo(hostname, None)
+            for item in addr_info:
+                ip = item[4][0]
+                if ipaddress.ip_address(ip).is_private:
+                    return True
+                if ipaddress.ip_address(ip).is_loopback:
+                    return True
+                if ipaddress.ip_address(ip).is_link_local:
+                    return True
+
+            return False
+        except Exception:
+            # If resolution fails, we'll treat it as potentially unsafe or handle it in reachable check
+            return False
+
     async def validate_url_reachable(self, url: str) -> tuple[bool, Optional[str]]:
+        if self.is_internal_url(url):
+            return False, "Access to internal networks is restricted (SSRF protection)"
+
         try:
             async with aiohttp.ClientSession(timeout=self.timeout) as session:
                 async with session.get(url, ssl=False) as resp:

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from typing import List, Optional
@@ -12,6 +12,12 @@ from app.source_validator import source_validator, SourceValidationResult
 from app.models import SourceConfig
 
 router = APIRouter(prefix="/api/v1", tags=["sources"])
+
+# Access limiter from app state via request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
 
 
 class SourceCreate(BaseModel):
@@ -56,8 +62,11 @@ class UserStats(BaseModel):
 
 
 @router.get("/my-stats", response_model=UserStats)
+@limiter.limit("60/minute")
 async def get_my_stats(
-    current_user: User = Depends(require_user), session: AsyncSession = Depends(get_db)
+    request: Request,
+    current_user: User = Depends(require_user),
+    session: AsyncSession = Depends(get_db),
 ):
     result = await session.execute(
         select(ProxySource).where(ProxySource.user_id == current_user.id)
@@ -81,8 +90,11 @@ async def get_my_stats(
 
 
 @router.get("/my-sources", response_model=List[SourceResponse])
+@limiter.limit("60/minute")
 async def get_my_sources(
-    current_user: User = Depends(require_user), session: AsyncSession = Depends(get_db)
+    request: Request,
+    current_user: User = Depends(require_user),
+    session: AsyncSession = Depends(get_db),
 ):
     result = await session.execute(
         select(ProxySource).where(ProxySource.user_id == current_user.id)
@@ -95,7 +107,9 @@ async def get_my_sources(
 
 
 @router.post("/my-sources", response_model=dict, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/hour")
 async def create_source(
+    request: Request,
     source_data: SourceCreate,
     current_user: User = Depends(require_user),
     session: AsyncSession = Depends(get_db),
@@ -155,7 +169,9 @@ async def create_source(
 
 
 @router.put("/my-sources/{source_id}", response_model=SourceResponse)
+@limiter.limit("30/minute")
 async def update_source(
+    request: Request,
     source_id: int,
     update_data: SourceUpdate,
     current_user: User = Depends(require_user),
@@ -196,7 +212,9 @@ async def update_source(
 
 
 @router.delete("/my-sources/{source_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
 async def delete_source(
+    request: Request,
     source_id: int,
     current_user: User = Depends(require_user),
     session: AsyncSession = Depends(get_db),
@@ -227,19 +245,40 @@ async def delete_source(
     return None
 
 
-@router.get("/admin/sources", response_model=List[SourceResponse])
+@router.get("/admin/sources", response_model=dict)
+@limiter.limit("30/minute")
 async def admin_get_all_sources(
-    current_user: User = Depends(require_admin), session: AsyncSession = Depends(get_db)
+    request: Request,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    current_user: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
 ):
-    result = await session.execute(select(ProxySource))
+    from sqlalchemy import func
+
+    total_result = await session.execute(select(func.count()).select_from(ProxySource))
+    total = total_result.scalar() or 0
+
+    result = await session.execute(
+        select(ProxySource)
+        .limit(limit)
+        .offset(offset)
+        .order_by(ProxySource.created_at.desc())
+    )
     sources = result.scalars().all()
 
-    return [
-        SourceResponse(
-            **{**source.__dict__, "is_owner": source.user_id == current_user.id}
-        )
-        for source in sources
-    ]
+    return {
+        "total": total,
+        "count": len(sources),
+        "offset": offset,
+        "limit": limit,
+        "sources": [
+            SourceResponse(
+                **{**source.__dict__, "is_owner": source.user_id == current_user.id}
+            )
+            for source in sources
+        ],
+    }
 
 
 @router.post("/admin/sources/{source_id}/protect", response_model=SourceResponse)
