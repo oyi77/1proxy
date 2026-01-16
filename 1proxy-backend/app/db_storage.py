@@ -182,20 +182,38 @@ class DatabaseStorage:
         if not prepared_data:
             return 0
 
-        try:
-            # Use SQLite's INSERT OR REPLACE for upsert behavior
-            # On conflict (duplicate URL), update last_seen and updated_at
-            stmt = sqlite_insert(Proxy).values(prepared_data)
-            stmt = stmt.on_conflict_do_update(
-                index_elements=["url"],
-                set_={
-                    "last_seen": now,
-                    "updated_at": now,
-                },
+try:
+            batch_size = 100
+            total_inserted = 0
+            
+            for i in range(0, len(prepared_data), batch_size):
+                batch = prepared_data[i:i + batch_size]
+                
+                for proxy_dict in batch:
+                    try:
+                        result = await session.execute(
+                            select(Proxy).where(Proxy.url == proxy_dict["url"])
+                        )
+                        existing = result.scalar_one_or_none()
+                        
+                        if existing:
+                            existing.last_seen = now
+                            existing.updated_at = now
+                        else:
+                            proxy = Proxy(**proxy_dict)
+                            session.add(proxy)
+                            total_inserted += 1
+                        
+                    except Exception as e:
+                        logger.error(f"Error inserting proxy {proxy_dict.get('url')}: {e}")
+                        continue
+                
+                await session.commit()
+            
+            logger.info(
+                f"Successfully processed {len(prepared_data)} proxies, inserted {total_inserted} new ones"
             )
-
-            await session.execute(stmt)
-            await session.commit()
+            return len(prepared_data)
 
             logger.info(
                 f"Successfully bulk inserted/updated {len(prepared_data)} proxies"
@@ -205,7 +223,7 @@ class DatabaseStorage:
         except Exception as e:
             logger.error(f"Error in bulk insert: {e}")
             await session.rollback()
-            # Fallback to individual inserts if bulk fails
+                        # Fallback to individual inserts if bulk fails
             return await self._add_proxies_fallback(session, prepared_data)
 
     async def _add_proxies_fallback(
