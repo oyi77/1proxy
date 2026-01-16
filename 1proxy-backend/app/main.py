@@ -73,8 +73,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 app = FastAPI(
-    title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
 # CORS middleware configuration
@@ -84,7 +83,7 @@ app.add_middleware(
         settings.FRONTEND_URL,
         settings.API_URL,
         "http://localhost:3000",
-        "http://localhost:8000"
+        "http://localhost:8000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -96,6 +95,10 @@ app.include_router(proxies.router)
 app.include_router(notifications.router)
 app.include_router(validation.router)
 app.include_router(admin.router)
+
+from app.admin.scraping_admin import router as scraping_admin_router
+
+app.include_router(scraping_admin_router)
 
 grabber = GitHubGrabber()
 
@@ -128,9 +131,10 @@ async def startup():
     asyncio.create_task(
         background_validation_worker(batch_size=50, interval_seconds=60)
     )
-    
+
     # Import and start auto-scraper
     from app.background_validator import background_scraper_worker
+
     asyncio.create_task(
         background_scraper_worker(interval_minutes=10)  # Scrape every 10 minutes
     )

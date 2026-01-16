@@ -176,3 +176,55 @@ class Notification(Base):
     read = Column(Boolean, default=False, index=True)
 
     user = relationship("User", backref="notifications")
+
+
+class ScrapingSession(Base):
+    __tablename__ = "scraping_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    source_id = Column(
+        Integer,
+        ForeignKey("proxy_sources.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    scraping_type = Column(String(50), default="scheduled", nullable=False)
+    status = Column(String(20), default="running", nullable=False, index=True)
+    proxies_found = Column(Integer, default=0)
+    proxies_valid = Column(Integer, default=0)
+    config = Column(JSON, nullable=True)
+    error_message = Column(Text, nullable=True)
+    initiated_by = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    started_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+
+    source = relationship("ProxySource")
+    initiator = relationship("User")
+
+    __table_args__ = (
+        Index("idx_scraping_session_status_source", "status", "source_id"),
+    )
+
+
+class BackgroundTask(Base):
+    __tablename__ = "background_tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_type = Column(String(100), nullable=False, index=True)
+    task_data = Column(JSON, nullable=False)
+    status = Column(String(20), default="pending", nullable=False, index=True)
+    result = Column(JSON, nullable=True)
+    error_message = Column(Text, nullable=True)
+    retry_count = Column(Integer, default=0)
+    max_retries = Column(Integer, default=3)
+    scheduled_for = Column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("idx_background_task_status_scheduled", "status", "scheduled_for"),
+    )

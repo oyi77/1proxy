@@ -16,9 +16,6 @@ from app.dependencies import require_admin
 # Rate limiter for this router
 limiter = Limiter(key_func=get_remote_address)
 
-# Rate limiter for this router
-limiter = Limiter(key_func=get_remote_address)
-
 router = APIRouter(prefix="/api/v1", tags=["proxies"])
 
 
@@ -414,20 +411,31 @@ async def test_proxy(request: Request, test_request: ProxyTestRequest):
         timeout_config = aiohttp.ClientTimeout(total=test_request.timeout)
 
         async with aiohttp.ClientSession(timeout=timeout_config) as session:
-            async with session.get(
-                test_request.target_url,
-                proxy=test_request.proxy_url,
-                ssl=False,  # Skip SSL verification for testing
-            ) as response:
-                latency_ms = int((time.time() - start_time) * 1000)
+            try:
+                async with session.get(
+                    test_request.target_url,
+                    proxy=test_request.proxy_url,
+                    ssl=False,  # Skip SSL verification for testing
+                ) as response:
+                    latency_ms = int((time.time() - start_time) * 1000)
 
+                    return ProxyTestResponse(
+                        proxy_url=test_request.proxy_url,
+                        target_url=test_request.target_url,
+                        working=True,
+                        latency_ms=latency_ms,
+                        status_code=response.status,
+                        error=None,
+                        tested_at=tested_at,
+                    )
+            except aiohttp.ClientError as e:
                 return ProxyTestResponse(
                     proxy_url=test_request.proxy_url,
                     target_url=test_request.target_url,
-                    working=True,
-                    latency_ms=latency_ms,
-                    status_code=response.status,
-                    error=None,
+                    working=False,
+                    latency_ms=None,
+                    status_code=None,
+                    error=f"Connection error: {str(e)}",
                     tested_at=tested_at,
                 )
 
@@ -441,26 +449,6 @@ async def test_proxy(request: Request, test_request: ProxyTestRequest):
             error="Connection timeout",
             tested_at=tested_at,
         )
-    except aiohttp.ClientError as e:
-        return ProxyTestResponse(
-            proxy_url=test_request.proxy_url,
-            target_url=test_request.target_url,
-            working=False,
-            latency_ms=None,
-            status_code=None,
-            error=f"Connection error: {str(e)}",
-            tested_at=tested_at,
-        )
-        except Exception as e:
-            return ProxyTestResponse(
-                proxy_url=test_request.proxy_url,
-                target_url=test_request.target_url,
-                working=False,
-                latency_ms=None,
-                status_code=None,
-                error=f"Test failed: {str(e)}",
-                tested_at=tested_at,
-            )
 
 
 @router.delete("/proxies/{proxy_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -471,67 +459,6 @@ async def delete_proxy(
     session: AsyncSession = Depends(get_db),
     admin_user=Depends(require_admin),
 ):
-    success = await db_storage.delete_proxy(session, proxy_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Proxy not found")
-    return None
-
-
-        start_time = time.time()
-
-        # Create aiohttp session with proxy
-        timeout_config = aiohttp.ClientTimeout(total=request.timeout)
-
-        async with aiohttp.ClientSession(timeout=timeout_config) as session:
-            async with session.get(
-                request.target_url,
-                proxy=request.proxy_url,
-                ssl=False,  # Skip SSL verification for testing
-            ) as response:
-                latency_ms = int((time.time() - start_time) * 1000)
-
-                return ProxyTestResponse(
-                    proxy_url=request.proxy_url,
-                    target_url=request.target_url,
-                    working=True,
-                    latency_ms=latency_ms,
-                    status_code=response.status,
-                    error=None,
-                    tested_at=tested_at,
-                )
-
-    except asyncio.TimeoutError:
-        return ProxyTestResponse(
-            proxy_url=request.proxy_url,
-            target_url=request.target_url,
-            working=False,
-            latency_ms=None,
-            status_code=None,
-            error="Connection timeout",
-            tested_at=tested_at,
-        )
-    except aiohttp.ClientError as e:
-        return ProxyTestResponse(
-            proxy_url=request.proxy_url,
-            target_url=request.target_url,
-            working=False,
-            latency_ms=None,
-            status_code=None,
-            error=f"Connection error: {str(e)}",
-            tested_at=tested_at,
-        )
-
-
-@router.delete("/proxies/{proxy_id}", status_code=status.HTTP_204_NO_CONTENT)
-@limiter.limit("30/minute")
-async def delete_proxy(
-    request: Request,
-    proxy_id: int,
-    current_user: User = Depends(require_admin),
-    session: AsyncSession = Depends(get_db),
-):
-    from app.db_models import User  # Avoid circular import
-
     success = await db_storage.delete_proxy(session, proxy_id)
     if not success:
         raise HTTPException(status_code=404, detail="Proxy not found")
