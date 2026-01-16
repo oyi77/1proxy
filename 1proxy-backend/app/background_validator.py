@@ -11,82 +11,86 @@ logger = logging.getLogger(__name__)
 
 async def background_scraper_worker(interval_minutes: int = 10):
     """Automatically scrape all enabled sources periodically"""
-    
+
     # Initial scrape on startup
     await asyncio.sleep(10)  # Wait 10 seconds for app to fully start
 
     while True:
         try:
-            async with get_db() as session:
+            async with AsyncSessionLocal() as session:
                 # Get all enabled sources from database
                 sources_db = await db_storage.get_sources(session, enabled_only=True)
 
-            if not sources_db:
-                logger.warning("⚠️  No enabled sources found")
-                return
+                if not sources_db:
+                    logger.warning("⚠️  No enabled sources found")
+                else:
+                    grabber = GitHubGrabber()
+                    total_scraped = 0
+                    total_added = 0
 
-            grabber = GitHubGrabber()
-            total_scraped = 0
-            total_added = 0
+                    for source_db in sources_db:
+                        try:
+                            from app.models import SourceConfig, SourceType
 
-            for source_db in sources_db:
-                try:
-                    from app.models import SourceConfig, SourceType
+                            # Create SourceConfig from database source
+                            source = SourceConfig(
+                                url=source_db.url, type=SourceType(source_db.type)
+                            )
 
-                    # Create SourceConfig from database source
-                    source = SourceConfig(
-                        url=source_db.url, type=SourceType(source_db.type)
-                    )
+                            proxies = await grabber.extract_proxies(source)
 
-                    proxies = await grabber.extract_proxies(source)
+                            proxies_data = []
+                            for p in proxies:
+                                data = (
+                                    p.model_dump()
+                                    if hasattr(p, "model_dump")
+                                    else p.__dict__
+                                )
+                                proxies_data.append(
+                                    {
+                                        "url": f"{data.get('protocol', 'http')}://{data.get('ip')}:{data.get('port')}",
+                                        "protocol": data.get("protocol", "http"),
+                                        "ip": data.get("ip"),
+                                        "port": data.get("port"),
+                                        "country_code": data.get("country_code"),
+                                        "country_name": data.get("country_name"),
+                                        "city": data.get("city"),
+                                        "latency_ms": data.get("latency_ms"),
+                                        "speed_mbps": data.get("speed_mbps"),
+                                        "anonymity": data.get("anonymity"),
+                                        "proxy_type": data.get("proxy_type"),
+                                        "source_id": source_db.id,
+                                    }
+                                )
 
-                    proxies_data = []
-                    for p in proxies:
-                        data = (
-                            p.model_dump() if hasattr(p, "model_dump") else p.__dict__
-                        )
-                        proxies_data.append(
-                            {
-                                "url": f"{data.get('protocol', 'http')}://{data.get('ip')}:{data.get('port')}",
-                                "protocol": data.get("protocol", "http"),
-                                "ip": data.get("ip"),
-                                "port": data.get("port"),
-                                "country_code": data.get("country_code"),
-                                "country_name": data.get("country_name"),
-                                "city": data.get("city"),
-                                "latency_ms": data.get("latency_ms"),
-                                "speed_mbps": data.get("speed_mbps"),
-                                "anonymity": data.get("anonymity"),
-                                "proxy_type": data.get("proxy_type"),
-                                "source_id": source_db.id,
-                            }
-                        )
+                            added = await db_storage.add_proxies(session, proxies_data)
+                            total_scraped += len(proxies)
+                            total_added += added
 
-                    added = await db_storage.add_proxies(session, proxies_data)
-                    total_scraped += len(proxies)
-                    total_added += added
+                            # Update source stats
+                            source_db.total_scraped = (
+                                source_db.total_scraped or 0
+                            ) + len(proxies)
+                            source_db.last_scraped = datetime.utcnow()
 
-                    # Update source stats
-                    source_db.total_scraped = (source_db.total_scraped or 0) + len(
-                        proxies
-                    )
-                    source_db.last_scraped = datetime.utcnow()
+                            logger.info(
+                                f"✅ Scraped {len(proxies)} proxies from {source_db.name} (added {added} new)"
+                            )
 
+                        except Exception as e:
+                            logger.error(f"❌ Failed to scrape {source_db.url}: {e}")
+                            continue
+
+                    await session.commit()
                     logger.info(
-                        f"✅ Scraped {len(proxies)} proxies from {source_db.name} (added {added} new)"
+                        f"✅ Auto-scraping complete: {total_scraped} scraped, {total_added} new proxies added"
                     )
 
-                except Exception as e:
-                    logger.error(f"❌ Failed to scrape {source_db.url}: {e}")
-                    continue
+            await asyncio.sleep(interval_minutes * 60)
 
-            await session.commit()
-            logger.info(
-                f"✅ Auto-scraping complete: {total_scraped} scraped, {total_added} new proxies added"
-            )
-
-    except Exception as e:
-        logger.error(f"⚠️  Auto-scraping error: {e}")
+        except Exception as e:
+            logger.error(f"⚠️  Background scraper error: {e}")
+            await asyncio.sleep(300)
 
 
 async def background_validation_worker(

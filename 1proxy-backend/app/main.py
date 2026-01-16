@@ -31,9 +31,7 @@ logger = logging.getLogger(__name__)
 limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
-    title="1proxy API",
-    description="Robust, Free, Fast Proxy Aggregation Platform - Community-Driven Multi-User Platform",
-    version="2.0.0",
+    title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
 # Add rate limiter state
@@ -71,10 +69,6 @@ async def global_exception_handler(request: Request, exc: Exception):
         },
     )
 
-
-app = FastAPI(
-    title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_STR}/openapi.json"
-)
 
 # CORS middleware configuration
 app.add_middleware(

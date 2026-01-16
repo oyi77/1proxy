@@ -182,20 +182,20 @@ class DatabaseStorage:
         if not prepared_data:
             return 0
 
-try:
+        try:
             batch_size = 100
             total_inserted = 0
-            
+
             for i in range(0, len(prepared_data), batch_size):
-                batch = prepared_data[i:i + batch_size]
-                
+                batch = prepared_data[i : i + batch_size]
+
                 for proxy_dict in batch:
                     try:
                         result = await session.execute(
                             select(Proxy).where(Proxy.url == proxy_dict["url"])
                         )
                         existing = result.scalar_one_or_none()
-                        
+
                         if existing:
                             existing.last_seen = now
                             existing.updated_at = now
@@ -203,27 +203,23 @@ try:
                             proxy = Proxy(**proxy_dict)
                             session.add(proxy)
                             total_inserted += 1
-                        
+
                     except Exception as e:
-                        logger.error(f"Error inserting proxy {proxy_dict.get('url')}: {e}")
+                        logger.error(
+                            f"Error inserting proxy {proxy_dict.get('url')}: {e}"
+                        )
                         continue
-                
+
                 await session.commit()
-            
-            logger.info(
-                f"Successfully processed {len(prepared_data)} proxies, inserted {total_inserted} new ones"
-            )
-            return len(prepared_data)
 
             logger.info(
-                f"Successfully bulk inserted/updated {len(prepared_data)} proxies"
+                f"Successfully processed {len(prepared_data)} proxies, inserted {total_inserted} new ones"
             )
             return len(prepared_data)
 
         except Exception as e:
             logger.error(f"Error in bulk insert: {e}")
             await session.rollback()
-                        # Fallback to individual inserts if bulk fails
             return await self._add_proxies_fallback(session, prepared_data)
 
     async def _add_proxies_fallback(
@@ -259,7 +255,10 @@ try:
         return added_count
 
     async def validate_and_update_proxies(
-        self, session: AsyncSession, proxy_ids: List[int] = None, limit: int = 50
+        self,
+        session: AsyncSession,
+        proxy_ids: Optional[List[int]] = None,
+        limit: int = 50,
     ) -> dict:
         """Validate pending proxies and update their status"""
         if proxy_ids:
