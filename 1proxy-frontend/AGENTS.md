@@ -4,24 +4,28 @@
 **Focus:** Client-side UI for proxy browsing, user dashboards, and admin controls.
 
 ## OVERVIEW
-Next.js 15 App Router application with a "Retro-Cyber" design system, client-side auth context, and type-safe API integration.
+Next.js 15 App Router application with "Retro-Cyber" design system, client-side auth context, and type-safe API integration. Emphasizes CSR for high-frequency updates.
 
 ## STRUCTURE
 ```
 1proxy-frontend/
 ├── app/             # File-based routing (→ see app/AGENTS.md)
-│   ├── home-client.tsx     # Main dashboard (772 lines - refactor candidate)
+│   ├── page.tsx            # Landing page (SSR)
+│   ├── home-client.tsx     # Dashboard logic (316 lines CSR)
 │   ├── dashboard/          # User dashboard & source management
 │   ├── admin/              # Admin-only pages
 │   └── login/              # OAuth login page
 ├── components/      # Reusable UI
 │   ├── ProxyTable.tsx      # Main proxy display component
-│   └── TabNavigation.tsx   # Tab switching UI
-├── lib/             # Core utilities
+│   ├── TabNavigation.tsx   # Tab switching UI
+│   └── tabs/               # Tab components (→ see tabs/AGENTS.md)
+├── lib/             # Core utilities (→ see lib/AGENTS.md)
 │   ├── api.ts              # Typed API client
 │   └── auth-context.tsx    # Auth state + ProtectedRoute
 ├── public/          # Static assets
+├── __tests__/       # Vitest test suite
 ├── tailwind.config.ts      # "Retro-Cyber" design tokens
+├── vitest.config.ts        # Test configuration
 └── next.config.ts
 ```
 
@@ -33,6 +37,7 @@ Next.js 15 App Router application with a "Retro-Cyber" design system, client-sid
 | Change auth logic | `lib/auth-context.tsx` |
 | Update design tokens | `tailwind.config.ts` |
 | Add reusable component | `components/*.tsx` |
+| Add tests | `__tests__/components/*.test.tsx` |
 
 ## CONVENTIONS
 - **Rendering**: Uses CSR (`'use client'`) for dashboard pages to handle high-frequency state updates
@@ -40,6 +45,7 @@ Next.js 15 App Router application with a "Retro-Cyber" design system, client-sid
 - **Auth**: Context-based with `<ProtectedRoute>` wrapper for authenticated pages
 - **Styling**: Tailwind with custom `retro-*` classes (retro-pink, retro-yellow, retro-shadow)
 - **API Integration**: Centralized client in `lib/api.ts` with TypeScript interfaces
+- **Testing**: Vitest with jsdom, mocks for Next.js navigation and image components
 
 ## UNIQUE STYLES
 ### Retro-Cyber Design System
@@ -61,7 +67,7 @@ borderWidth: {
 ### Client-Side Auth Pattern
 ```tsx
 // Protected routes use ProtectedRoute wrapper
-<ProtectedRoute>
+<ProtectedRoute adminOnly={true}>
   <YourComponent />
 </ProtectedRoute>
 ```
@@ -73,6 +79,7 @@ borderWidth: {
 - **NO** hardcoded API URLs (use `NEXT_PUBLIC_API_URL` env var)
 
 ## NOTES
-- **No tests yet** - testing infrastructure not implemented
-- **Large file**: `home-client.tsx` (772 lines) - refactor candidate (split tabs into components)
+- **Testing**: Vitest setup complete (vitest.config.ts, vitest.setup.tsx)
+- **Large file**: `home-client.tsx` (316 lines) - tabs partially extracted to `components/tabs/`
 - **CSR strategy**: Dashboard uses `dynamic(..., {ssr: false})` to prevent hydration errors
+- **Standalone output**: Production builds use Next.js `standalone` mode for Docker optimization

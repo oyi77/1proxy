@@ -485,7 +485,7 @@ class DatabaseStorage:
         title: str,
         message: str,
         severity: str = "info",
-    ) -> Notification:
+    ):
         from app.db_models import Notification
 
         notification = Notification(
@@ -506,7 +506,7 @@ class DatabaseStorage:
         user_id: int,
         unread_only: bool = False,
         limit: int = 50,
-    ) -> List[Notification]:
+    ):
         from app.db_models import Notification
 
         query = select(Notification).where(Notification.user_id == user_id)

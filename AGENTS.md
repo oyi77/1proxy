@@ -1,7 +1,7 @@
 # 1PROXY PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-01-15 08:56 AM  
-**Commit:** 4b031b8  
+**Generated:** 2026-01-16 03:12 AM  
+**Commit:** f8fbe6d  
 **Branch:** main
 
 ## OVERVIEW
@@ -15,13 +15,16 @@ Community-driven proxy aggregation platform. FastAPI backend + Next.js 15 fronte
 │   │   ├── routers/    # API endpoints (→ see routers/AGENTS.md)
 │   │   ├── grabber/    # Multi-protocol scrapers (→ see grabber/AGENTS.md)
 │   │   ├── hunter/     # Auto-discovery engine (→ see hunter/AGENTS.md)
-│   │   └── models/     # Pydantic schemas
+│   │   ├── models/     # Pydantic schemas
+│   │   ├── utils/      # Base64 decoder, URL helpers
+│   │   └── config/     # Settings management
 │   ├── alembic/        # DB migrations
 │   └── tests/          # Pytest suite (→ see tests/AGENTS.md)
 ├── 1proxy-frontend/    # Next.js 15 App Router (→ see 1proxy-frontend/AGENTS.md)
 │   ├── app/            # File-based routing (→ see app/AGENTS.md)
 │   ├── components/     # ProxyTable, TabNavigation
-│   └── lib/            # API client + Auth context
+│   │   └── tabs/       # Tab components (→ see tabs/AGENTS.md)
+│   └── lib/            # API client + Auth context (→ see lib/AGENTS.md)
 ├── docs/               # Architecture & design docs
 └── docker-compose.yml  # Orchestration (backend, frontend, redis)
 ```
@@ -36,9 +39,11 @@ Community-driven proxy aggregation platform. FastAPI backend + Next.js 15 fronte
 | Validation algorithm | `1proxy-backend/app/validator.py` | 0-100 scoring, anonymity detection |
 | Auth/OAuth | `1proxy-backend/app/oauth.py` | GitHub + Google providers |
 | Database models | `1proxy-backend/app/db_models.py` | SQLAlchemy async models |
+| Database queries | `1proxy-backend/app/db_storage.py` | Repository pattern (555 lines) |
 | Frontend UI | `1proxy-frontend/app/` | Next.js App Router pages |
 | API client | `1proxy-frontend/lib/api.ts` | Typed fetch wrappers |
 | Auth context | `1proxy-frontend/lib/auth-context.tsx` | User state + ProtectedRoute |
+| Tab components | `1proxy-frontend/components/tabs/` | HomeTab, ProxiesTab, SourcesTab |
 | Add migration | `1proxy-backend/alembic/versions/` | Use `alembic revision --autogenerate` |
 | Tests | `1proxy-backend/tests/` | Pytest with async fixtures |
 
@@ -58,6 +63,7 @@ Community-driven proxy aggregation platform. FastAPI backend + Next.js 15 fronte
 - **Protected routes**: Wrap with `<ProtectedRoute>` from auth-context
 - **Type safety**: Strict TypeScript, interfaces defined in `lib/api.ts`
 - **State**: React Context for global (Auth, Theme), useState for local
+- **Testing**: Vitest with jsdom (not Jest)
 
 ### Database
 - **Migrations**: Alembic only. Never manual schema changes
@@ -68,6 +74,7 @@ Community-driven proxy aggregation platform. FastAPI backend + Next.js 15 fronte
 - **Multi-stage builds**: Frontend uses deps → builder → runner pattern
 - **Health checks**: Backend `/health`, Redis `redis-cli ping`
 - **Env vars**: Centralized in `.env` (see `.env.example`)
+- **Standalone output**: Frontend uses Next.js `standalone` mode for production
 
 ## ANTI-PATTERNS (THIS PROJECT)
 
@@ -76,6 +83,8 @@ Community-driven proxy aggregation platform. FastAPI backend + Next.js 15 fronte
 - **NEVER** blocking I/O in backend - use `async` versions (aiohttp, aiosqlite)
 - **NEVER** skip validation - all proxies must pass `ProxyValidator` before serving
 - **NEVER** edit `package-lock.json` manually - let npm handle it
+- **NEVER** use `session.execute` in routers - use `db_storage` methods
+- **NEVER** leak raw exceptions - use global exception handler
 - **DEPRECATED dependency**: `inflight` module (memory leak) - ignore for now, no easy fix
 
 ## UNIQUE STYLES
@@ -122,6 +131,7 @@ npm install
 npm run dev                       # Dev server (port 3000)
 npm run build                     # Production build
 npm run lint                      # ESLint check
+npm test                          # Run Vitest tests
 ```
 
 ### Docker
@@ -142,11 +152,12 @@ alembic downgrade -1                               # Rollback one version
 
 ## NOTES
 
-- **No frontend tests yet** - only backend has pytest suite
+- **Frontend tests**: Vitest setup in place (vitest.config.ts, vitest.setup.tsx)
 - **SQLite for dev** - PostgreSQL recommended for production
 - **Redis required** - used for session storage and caching
 - **OAuth setup required** - get credentials from GitHub/Google developer consoles
 - **"Zero Sleep" hack** - see `docs/SDD.md` for HuggingFace deployment patterns
 - **Proxy safety invariant** - unvalidated proxies NEVER reach users
-- **Large files** - 4 files >500 lines (home-client.tsx, test_validator.py, proxies.py, db_storage.py)
+- **Large files** - 3 files >500 lines (db_storage.py, proxies.py, test_validator.py)
 - **No CI/CD workflows yet** - uses custom bash scripts (start.sh, test-integration.sh)
+- **Duplicate code**: `proxies.py` has redundant `limiter` declaration and test_proxy block

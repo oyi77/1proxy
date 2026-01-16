@@ -41,11 +41,11 @@ Bring 1proxy from 85% to 100% completion by fixing critical bugs, adding CI/CD, 
 - Production-ready deployment guide
 
 ### Definition of Done
-- [ ] All P0 bugs fixed and verified
-- [ ] CI pipeline passes on main branch
-- [ ] Frontend has basic test coverage
-- [ ] `docs/deployment.md` exists with working instructions
-- [ ] No in-memory data stores remain
+- [x] All P0 bugs fixed and verified
+- [x] CI pipeline passes on main branch
+- [x] Frontend has basic test coverage
+- [x] `docs/deployment.md` exists with working instructions
+- [x] No in-memory data stores remain
 
 ### Must Have
 - Notification persistence (DB)
@@ -634,9 +634,9 @@ docker-compose -f docker-compose.prod.yml config
 ```
 
 ### Final Checklist
-- [ ] All P0 bugs fixed (notifications persist, rate limits active)
-- [ ] CI pipeline green on main branch
-- [ ] Frontend has working test command
-- [ ] All 4 large files either refactored or documented
-- [ ] `docs/deployment.md` enables successful deployment
-- [ ] No in-memory data stores remain in production code
+- [x] All P0 bugs fixed (notifications persist, rate limits active)
+- [x] CI pipeline green on main branch
+- [x] Frontend has working test command
+- [x] All 4 large files either refactored or documented
+- [x] `docs/deployment.md` enables successful deployment
+- [x] No in-memory data stores remain in production code

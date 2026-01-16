@@ -4,16 +4,16 @@
 **Focus:** Autonomous proxy source discovery using AI, search engines, and existing proxies.
 
 ## OVERVIEW
-The Hunter Protocol is a multi-strategy discovery engine that allows 1proxy to grow autonomously by finding new proxy sources without human intervention.
+Multi-strategy discovery engine allowing 1proxy to grow autonomously by finding new proxy sources without human intervention. Uses a confidence scoring system to rank candidates.
 
 ## STRUCTURE
 ```
 hunter/
-├── strategies/        # Discovery strategy implementations
-│   ├── search.py      # DuckDuckGo scraping using existing proxies
+├── strategies/        # Discovery strategy implementations (→ see strategies/AGENTS.md)
+│   ├── search.py      # DuckDuckGo scraping via existing proxies
 │   ├── ai.py          # LLM-based discovery (g4f)
 │   └── github.py      # GitHub URL normalization
-├── service.py         # Orchestrates all strategies
+├── service.py         # Orchestrates all strategies + confidence scoring
 ├── extractor.py       # Universal proxy parser (HTML, Base64, VMess)
 └── __init__.py
 ```
@@ -27,7 +27,7 @@ hunter/
 | Trigger manual hunt | `routers/admin.py` → `/hunter/trigger` |
 
 ## HUNTER WORKFLOW
-1. **Discovery**: Each strategy (`SearchStrategy`, `AIStrategy`, `GitHubStrategy`) returns URLs
+1. **Discovery**: Each strategy returns candidate URLs
 2. **Extraction**: `UniversalExtractor` parses proxies from each URL
 3. **Scoring**: Candidates get `confidence_score` (0-100) based on domain trust + proxy yield
 4. **Storage**: Saved as `CandidateSource` with status `pending`
@@ -38,6 +38,7 @@ hunter/
 - **Confidence Formula**: Domain trust (GitHub +20, Pastebin +10) + Proxy yield (500+ = +20) + Protocol diversity
 - **Universal Extraction**: Handles raw text, Base64, HTML-wrapped, VMess/VLESS configs
 - **GitHub Normalization**: Auto-converts `github.com/.../blob/` → `raw.githubusercontent.com/...`
+- **Parallel Execution**: `HunterService` runs all strategies via `asyncio.gather()`
 
 ## UNIQUE ALGORITHMS
 ### Recursive Discovery Pattern
@@ -59,6 +60,10 @@ urls = extract_urls_from_text(llm_response)
 ```
 
 ## ANTI-PATTERNS
-- **NO** hardcoded source URLs in strategies (they should discover dynamically)
+- **NO** hardcoded source URLs in strategies (discover dynamically)
 - **NO** blocking candidates without confidence scoring
-- **NO** direct promotion to ProxySource (must go through CandidateSource first)
+- **NO** direct promotion to ProxySource (must go through CandidateSource)
+
+## KNOWN ISSUES
+- **Database Coupling**: `SearchStrategy` directly accesses `db_storage` and `database.get_db()` (should receive proxy provider interface)
+- **Environment Coupling**: `GitHubStrategy` directly reads `os.getenv("GITHUB_TOKEN")` (should use config object)
