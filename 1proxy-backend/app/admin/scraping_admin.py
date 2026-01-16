@@ -120,10 +120,15 @@ def get_enhanced_service() -> EnhancedScrapingService:
     """Get atau buat enhanced scraping service instance"""
     global enhanced_service
     if not enhanced_service:
-        enhanced_service = EnhancedScrapingService()
-        background_tasks.add_task(
-            enhanced_service.initialize_services(), name="enhanced-scraping-service"
+        default_config = ScrapingEnhancementConfig(
+            enable_proxy_rotation=True,
+            max_concurrent_requests=10,
+            rate_limit_per_second=5,
+            enable_retry=True,
+            max_retries=3,
+            timeout_seconds=30,
         )
+        enhanced_service = EnhancedScrapingService(config=default_config)
 
     return enhanced_service
 
@@ -773,15 +778,3 @@ async def execute_operation(
         raise HTTPException(
             status_code=500, detail=f"Error executing operation {operation}: {str(e)}"
         )
-
-
-# Background task handler startup
-@router.on_event("startup")
-async def startup_event():
-    """Initialize enhanced scraping service on startup"""
-    service = get_enhanced_service()
-    background_tasks.add_task(
-        service.initialize_services(), name="enhanced-scraping-init"
-    )
-
-    logger.info("Enhanced scraping admin panel initialized")

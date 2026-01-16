@@ -37,10 +37,20 @@ class EnhancedScrapingService:
 
     def __init__(self, config: ScrapingEnhancementConfig):
         self.config = config
-        self.proxy_rotator = ProxyRotator()
-        self.request_queue = RequestQueue()
+        self.proxy_rotator = ProxyRotator(proxies=[])
+        self.request_queue = RequestQueue(max_concurrent=config.max_concurrent_requests)
         self.rate_limiter = RateLimiter()
+        self.performance_monitor = PerformanceMonitor()
         self.logger = logging.getLogger(__name__)
+
+        from app.grabber.scraping_config import ScrapingConfigManager
+
+        self.config_manager = ScrapingConfigManager()
+
+    async def initialize_services(self):
+        """Initialize async components of the service."""
+        self.logger.info("Enhanced scraping service initialized successfully")
+        return True
 
     async def scrape_with_enhancements(
         self,
@@ -69,7 +79,7 @@ class EnhancedScrapingService:
     ) -> Optional[str]:
         """Scrape source with rate limit per proxy."""
 
-        return f"proxy_data_for_{proxy.proxy_url}"
+        return f"proxy_data_for_{proxy.proxy_url}" if proxy else "no_proxy_available"
 
 
 class PerformanceMonitor:
@@ -96,10 +106,20 @@ class PerformanceMonitor:
 
         self.metrics["total_data_bytes"] += data_size
 
+        total_requests = self.metrics["total_requests"]
         current_avg = self.metrics["avg_response_time"]
         self.metrics["avg_response_time"] = (
             current_avg * (total_requests - 1) + response_time
         ) / total_requests
+
+    def get_overall_stats(self) -> Dict[str, Any]:
+        """Get overall performance statistics."""
+        total_requests = self.metrics["total_requests"]
+        successful_requests = self.metrics["successful_requests"]
+
+        success_rate = (
+            (successful_requests / total_requests * 100) if total_requests > 0 else 0
+        )
 
         return {
             "total_requests": total_requests,

@@ -11,10 +11,9 @@ import time
 import random
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta
-import asyncio
-import random
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -152,26 +151,26 @@ class ExponentialBackoff:
 class ProxyRotator:
     """Smart proxy rotation untuk load balancing"""
 
-    def __init__(self, proxies: List[str]):
-        self.proxies = proxies
+    def __init__(self, proxies: List[str] = None):
+        self.proxies = proxies or []
         self.index = 0
-        self.failure_count: {}  # proxy -> failure count
+        self.failure_count: Dict[str, int] = {}
         self.last_rotated = time.time()
 
-    def get_next_proxy(self, exclude: Optional[List[str]] = None) -> Optional[str]:
+    async def get_next_proxy(
+        self, exclude: Optional[List[str]] = None
+    ) -> Optional[ProxyAgent]:
         """Get next proxy dengan round-robin"""
         available_proxies = [p for p in self.proxies if not exclude or p not in exclude]
 
         if not available_proxies:
             return None
 
-        # Simple round-robin dengan weighted selection
         proxy = available_proxies[self.index % len(available_proxies)]
 
-        # Increment index
         self.index = (self.index + 1) % len(available_proxies)
 
-        return proxy
+        return ProxyAgent(proxy_url=proxy)
 
     def record_failure(self, proxy: str):
         """Record proxy failure"""
