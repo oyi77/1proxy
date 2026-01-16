@@ -3,9 +3,14 @@
 import { useEffect, useState } from "react";
 import { useTheme } from "@/app/theme-provider";
 import { api, type ValidationStats, type QualityDistribution } from "@/lib/api";
+import { ScrapingSessionTab } from "@/components/tabs/ScrapingSessionTab";
+import { ScrapingConfigTab } from "@/components/tabs/ScrapingConfigTab";
+
+type TabType = "overview" | "scraping-sessions" | "scraping-config";
 
 export default function AdminPage() {
   const { theme } = useTheme();
+  const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [stats, setStats] = useState<ValidationStats | null>(null);
   const [quality, setQuality] = useState<QualityDistribution | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,7 +38,13 @@ export default function AdminPage() {
     return () => clearInterval(interval);
   }, []);
 
-  if (loading) {
+  const tabs: { id: TabType; label: string }[] = [
+    { id: "overview", label: "Overview" },
+    { id: "scraping-sessions", label: "Scraping Sessions" },
+    { id: "scraping-config", label: "Scraping Config" },
+  ];
+
+  if (loading && activeTab === "overview") {
     return (
       <div className="min-h-screen p-8" style={{
         backgroundColor: theme === 'dark' ? 'var(--dark-bg)' : 'var(--light-bg)'
@@ -69,7 +80,35 @@ export default function AdminPage() {
           Admin Dashboard
         </h1>
 
-        {stats && (
+        <div className="mb-8">
+          <div className="flex flex-wrap gap-3">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className="px-6 py-3 rounded-lg font-bold transition-all"
+                style={{
+                  fontFamily: "'Press Start 2P', 'Courier New', monospace",
+                  backgroundColor: activeTab === tab.id 
+                    ? 'var(--retro-pink)' 
+                    : theme === 'dark' ? 'var(--dark-card)' : '#FFFFFF',
+                  color: activeTab === tab.id 
+                    ? '#FFFFFF' 
+                    : theme === 'dark' ? 'var(--dark-text)' : '#1a1a1a',
+                  border: '3px solid #000000',
+                  boxShadow: activeTab === tab.id 
+                    ? '4px 4px 0px #000000' 
+                    : '2px 2px 0px #000000',
+                  fontSize: '0.75rem',
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {activeTab === "overview" && stats && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <StatCard
@@ -239,25 +278,33 @@ export default function AdminPage() {
                 ))}
               </div>
             </div>
+
+            <div className="mt-6 text-center">
+              <button
+                onClick={fetchStats}
+                className="px-6 py-3 rounded-xl font-bold retro-button"
+                style={{
+                  fontFamily: "'Press Start 2P', 'Courier New', monospace",
+                  backgroundColor: 'var(--retro-blue)',
+                  color: '#FFFFFF',
+                  border: '3px solid #000000',
+                  boxShadow: '4px 4px 0px #000000',
+                  fontSize: '0.75rem'
+                }}
+              >
+                Refresh Stats
+              </button>
+            </div>
           </>
         )}
 
-        <div className="mt-6 text-center">
-          <button
-            onClick={fetchStats}
-            className="px-6 py-3 rounded-xl font-bold retro-button"
-            style={{
-              fontFamily: "'Press Start 2P', 'Courier New', monospace",
-              backgroundColor: 'var(--retro-blue)',
-              color: '#FFFFFF',
-              border: '3px solid #000000',
-              boxShadow: '4px 4px 0px #000000',
-              fontSize: '0.75rem'
-            }}
-          >
-            Refresh Stats
-          </button>
-        </div>
+        {activeTab === "scraping-sessions" && (
+          <ScrapingSessionTab theme={theme} />
+        )}
+
+        {activeTab === "scraping-config" && (
+          <ScrapingConfigTab theme={theme} />
+        )}
       </div>
     </div>
   );
