@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { type Proxy } from "@/lib/api";
 import { useTheme } from "@/app/theme-provider";
 
@@ -166,7 +165,7 @@ export function ProxyTable({
                   <td className="px-4 py-3">
                     {proxy.country_code ? (
                       <div className="flex items-center gap-2">
-                        <Image
+                        <img
                           src={`https://flagcdn.com/w40/${proxy.country_code.toLowerCase()}.png`}
                           alt={proxy.country_name || proxy.country_code}
                           width={20}
