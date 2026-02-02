@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, type Proxy, type Stats } from "@/lib/api";
+import { getFullUrl, API_URL } from '@/lib/constants';
 import { TabNavigation } from "@/components/TabNavigation";
 import { useTheme } from "@/app/theme-provider";
 import { useAuth } from "@/lib/auth-context";
@@ -71,7 +72,7 @@ export function HomeClient() {
       params.set("anonymity", rotatorFilters.anonymity);
 
     const query = params.toString();
-    return `http://localhost:8000/api/v1/proxies/random${query ? `?${query}` : ""}`;
+    return `${API_URL}/api/v1/proxies/random${query ? `?${query}` : ""}`;
   };
 
   useEffect(() => {
@@ -156,7 +157,7 @@ export function HomeClient() {
                 {user ? (
                   <>
                     <Link
-                      href="/dashboard"
+                      href={getFullUrl('/dashboard')}
                       className="retro-button px-4 py-3 rounded-lg flex items-center justify-center font-bold"
                       style={{
                         backgroundColor: "var(--retro-purple)",
@@ -170,7 +171,7 @@ export function HomeClient() {
                     </Link>
 
                     <Link
-                      href="/dashboard/add-source"
+                      href={getFullUrl('/dashboard/add-source')}
                       className="retro-button px-4 py-3 rounded-lg flex items-center justify-center font-bold"
                       style={{
                         backgroundColor: "var(--retro-blue)",
@@ -199,7 +200,7 @@ export function HomeClient() {
                   </>
                 ) : (
                   <Link
-                    href="/login"
+                    href={getFullUrl('/login')}
                     className="retro-button px-4 py-3 rounded-lg flex items-center justify-center font-bold"
                     style={{
                       backgroundColor: "var(--retro-purple)",

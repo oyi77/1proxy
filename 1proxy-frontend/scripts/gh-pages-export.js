@@ -1,135 +1,48 @@
 #!/usr/bin/env node
 /**
- * Robust Post-build script for GitHub Pages (1proxy)
+ * Post-build script for GitHub Pages (1proxy)
+ * Re-aligned for Next.js 15 'output: export' with 'basePath'
  */
 
 const fs = require('fs');
 const path = require('path');
 
 const projectRoot = path.join(__dirname, '..');
-const outDir = path.join(projectRoot, 'out');
-const nextDir = path.join(projectRoot, '.next');
-const publicDir = path.join(projectRoot, 'public');
-
+const rawOutDir = path.join(projectRoot, 'out');
 const BASE_PATH = '/1proxy';
 
-console.log(`🔧 Starting robust export processing for: ${BASE_PATH}`);
+console.log(`🔧 Processing export for: ${BASE_PATH}`);
 
-// 1. Ensure out/ exists
-if (!fs.existsSync(outDir)) {
-    console.log('📦 Creating out/ directory...');
-    fs.mkdirSync(outDir, { recursive: true });
+if (!fs.existsSync(rawOutDir)) {
+    console.error('❌ Error: out/ directory not found.');
+    process.exit(1);
 }
 
-/**
- * Robust copy function
- */
-function safeCopy(src, dest) {
-    if (!fs.existsSync(src)) return;
+// When basePath is set, Next.js exports to out/1proxy/index.html
+const nestedDir = path.join(rawOutDir, BASE_PATH);
+
+if (fs.existsSync(nestedDir)) {
+    console.log(`📦 Flattening nested directory: ${nestedDir}`);
     
-    const stats = fs.statSync(src);
+    // Create unique temp directory
+    const tempDir = path.join(projectRoot, `out_temp_${Date.now()}`);
     
-    if (stats.isDirectory()) {
-        if (fs.existsSync(dest)) {
-            const destStats = fs.statSync(dest);
-            if (!destStats.isDirectory()) {
-                fs.unlinkSync(dest);
-                fs.mkdirSync(dest, { recursive: true });
-            }
-        } else {
-            fs.mkdirSync(dest, { recursive: true });
-        }
-        
-        fs.readdirSync(src).forEach(child => {
-            safeCopy(path.join(src, child), path.join(dest, child));
-        });
-    } else {
-        if (fs.existsSync(dest)) {
-            const destStats = fs.statSync(dest);
-            if (destStats.isDirectory()) {
-                console.log(`⚠️ Removing directory at ${dest} to copy file ${src}`);
-                fs.rmSync(dest, { recursive: true, force: true });
-            }
-        }
-        fs.copyFileSync(src, dest);
-    }
+    // 1. Move out/1proxy to out_temp
+    fs.renameSync(nestedDir, tempDir);
+    
+    // 2. Clear out/ (which now contains only an empty '1proxy' folder)
+    fs.rmSync(rawOutDir, { recursive: true, force: true });
+    
+    // 3. Move out_temp to out/
+    fs.renameSync(tempDir, rawOutDir);
+    
+    console.log('✅ Directory flattened. Contents of /1proxy are now at root of out/');
+} else {
+    console.log('ℹ️ No nested directory found. out/ might already be flat.');
 }
 
-// 2. Reconstruct from .next if needed (for environments where export fails)
-const serverAppDir = path.join(nextDir, 'server/app');
-if (fs.existsSync(serverAppDir)) {
-    console.log('📂 Copying HTML from .next/server/app...');
-    safeCopy(serverAppDir, outDir);
-}
+// Add .nojekyll to the final out directory
+fs.writeFileSync(path.join(rawOutDir, '.nojekyll'), '');
+console.log('✅ Added .nojekyll');
 
-const staticDir = path.join(nextDir, 'static');
-if (fs.existsSync(staticDir)) {
-    console.log('📂 Copying static assets from .next/static...');
-    safeCopy(staticDir, path.join(outDir, '_next/static'));
-}
-
-// 3. Always sync public/ to out/ (important for favicon.ico)
-if (fs.existsSync(publicDir)) {
-    console.log('📂 Syncing public/ directory...');
-    safeCopy(publicDir, outDir);
-}
-
-/**
- * Path rewriting logic
- */
-function fixPaths(dir) {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-            fixPaths(fullPath);
-        } else if (/\.(html|js|css|json)$/.test(entry.name)) {
-            let content = fs.readFileSync(fullPath, 'utf8');
-            let changed = false;
-
-            // Fix /_next/ paths
-            if (content.includes('/_next/')) {
-                content = content.replace(/(["'])\/_next\//g, `$1${BASE_PATH}/_next/`);
-                changed = true;
-            }
-
-            // Fix public asset paths
-            ['favicon.ico', 'rotator.js'].forEach(asset => {
-                const regex = new RegExp(`(["'])\/${asset.replace('.', '\\.')}`, 'g');
-                if (regex.test(content)) {
-                    content = content.replace(regex, `$1${BASE_PATH}/${asset}`);
-                    changed = true;
-                }
-            });
-
-            if (changed) {
-                fs.writeFileSync(fullPath, content, 'utf8');
-            }
-        }
-    }
-}
-
-// 4. Run path fixes
-console.log('🛠️ Fixing asset paths...');
-fixPaths(outDir);
-
-// 5. Cleanup Next.js metadata artifacts (the favicon.ico/ directory issue)
-const ghostFavicon = path.join(outDir, 'favicon.ico');
-if (fs.existsSync(ghostFavicon) && fs.statSync(ghostFavicon).isDirectory()) {
-    console.log('🧹 Cleaning up ghost favicon directory...');
-    fs.rmSync(ghostFavicon, { recursive: true, force: true });
-    // Re-copy the real one from public
-    const realFavicon = path.join(publicDir, 'favicon.ico');
-    if (fs.existsSync(realFavicon)) {
-        fs.copyFileSync(realFavicon, ghostFavicon);
-    }
-}
-
-// 6. Ensure index.html exists (fallback from page.html)
-if (fs.existsSync(path.join(outDir, 'page.html')) && !fs.existsSync(path.join(outDir, 'index.html'))) {
-    fs.copyFileSync(path.join(outDir, 'page.html'), path.join(outDir, 'index.html'));
-}
-
-// 7. Finalize
-fs.writeFileSync(path.join(outDir, '.nojekyll'), '');
-console.log(`✨ Export complete! Final files in: ${outDir}`);
+console.log(`✨ Export complete! Final files in: ${rawOutDir}`);

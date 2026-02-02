@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { API_URL, getFullUrl } from './constants';
 
 interface User {
   id: number;
@@ -24,13 +25,15 @@ const AuthContext = createContext<AuthContextType>({
   refreshUser: async () => {},
 });
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || API_URL;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchUser = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+      const response = await fetch(`${API_BASE}/auth/me`, {
         credentials: 'include',
       });
 
@@ -50,12 +53,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
+      await fetch(`${API_BASE}/auth/logout`, {
         method: 'POST',
         credentials: 'include',
       });
       setUser(null);
-      window.location.href = '/';
+      window.location.href = getFullUrl('/');
     } catch (error) {
       console.error('Logout failed:', error);
     }
@@ -78,12 +81,12 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return <div className="flex items-center justify-center min-h-screen text-gray-900">Loading...</div>;
   }
 
   if (!user) {
     if (typeof window !== 'undefined') {
-      window.location.href = '/login';
+      window.location.href = getFullUrl('/login');
     }
     return null;
   }

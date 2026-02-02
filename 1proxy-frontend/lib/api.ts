@@ -1,4 +1,6 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_URL } from "./constants";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || API_URL;
 
 export interface Proxy {
   id: number;

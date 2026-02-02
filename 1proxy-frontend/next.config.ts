@@ -4,9 +4,9 @@ const nextConfig: NextConfig = {
   // Static export for GitHub Pages deployment
   output: 'export',
   
-  // Set empty basePath and handle pathing in post-build script
-  // This produces standard paths that are easy to make relative/portable
-  basePath: '',
+  // BasePath is mandatory for the Next.js runtime to handle subdirectories correctly
+  // This affects internal routing, chunk loading, and React Server Component fetches
+  basePath: '/1proxy',
   
   // Disable image optimization for static export
   images: {
