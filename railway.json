@@ -1,7 +1,5 @@
 {
-  "$schema": "https://railway.app/railway.schema.json",
   "build": {
-    "builder": "DOCKER",
     "dockerfilePath": "1proxy-backend/Dockerfile.railway",
     "context": "."
   },
@@ -10,7 +8,6 @@
     "sleepApplication": false,
     "restartPolicyType": "ON_FAILURE",
     "healthCheckPath": "/health",
-    "healthCheckTimeout": 100,
-    "serviceName": "1proxy-backend"
+    "healthCheckTimeout": 100
   }
 }
