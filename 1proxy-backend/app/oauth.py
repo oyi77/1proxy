@@ -7,6 +7,49 @@ from app.auth import create_access_token
 from app.config import settings
 
 
+async def check_github_repo_admin(access_token: str, username: str) -> bool:
+    """
+    Check if user is admin/owner/collaborator of the configured GitHub repo.
+    Returns True if user has admin privileges on the repo.
+    """
+    if not settings.GITHUB_REPO_OWNER or not settings.GITHUB_REPO_NAME:
+        return False
+
+    async with httpx.AsyncClient() as client:
+        # Check if user is a collaborator
+        collab_response = await client.get(
+            f"https://api.github.com/repos/{settings.GITHUB_REPO_OWNER}/{settings.GITHUB_REPO_NAME}/collaborators/{username}",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "application/vnd.github+json",
+            },
+        )
+
+        if collab_response.status_code == 200:
+            collab_data = collab_response.json()
+            permission = collab_data.get("permission", "")
+            # Admin permissions: admin, maintain, triage
+            if permission in ["admin", "maintain", "triage"]:
+                return True
+
+        # Check if user is the repo owner (for organization repos)
+        repo_response = await client.get(
+            f"https://api.github.com/repos/{settings.GITHUB_REPO_OWNER}/{settings.GITHUB_REPO_NAME}",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "application/vnd.github+json",
+            },
+        )
+
+        if repo_response.status_code == 200:
+            repo_data = repo_response.json()
+            # Check if user is the owner
+            if repo_data.get("owner", {}).get("login") == username:
+                return True
+
+        return False
+
+
 class OAuthHandler:
     @staticmethod
     async def github_callback(code: str, session: AsyncSession) -> tuple[User, str]:
@@ -38,30 +81,38 @@ class OAuthHandler:
                 )
 
             github_user = user_response.json()
+            github_username = github_user["login"]
+            github_id = str(github_user["id"])
+
+            # Check if user is admin of the configured repo
+            is_repo_admin = await check_github_repo_admin(access_token, github_username)
 
             result = await session.execute(
                 select(User).where(
                     User.oauth_provider == "github",
-                    User.oauth_id == str(github_user["id"]),
+                    User.oauth_id == github_id,
                 )
             )
             user = result.scalar_one_or_none()
 
+            # Determine role: admin if repo collaborator, otherwise user
+            role = "admin" if is_repo_admin else "user"
+
             if not user:
                 user = User(
                     oauth_provider="github",
-                    oauth_id=str(github_user["id"]),
-                    email=github_user.get("email")
-                    or f"{github_user['login']}@github.local",
-                    username=github_user["login"],
+                    oauth_id=github_id,
+                    email=github_user.get("email") or f"{github_username}@github.local",
+                    username=github_username,
                     avatar_url=github_user.get("avatar_url"),
-                    role="user",
+                    role=role,
                 )
                 session.add(user)
             else:
                 user.last_login = None
-                user.username = github_user["login"]
+                user.username = github_username
                 user.avatar_url = github_user.get("avatar_url")
+                user.role = role  # Update role based on repo access
 
             await session.commit()
             await session.refresh(user)
