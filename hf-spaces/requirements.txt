@@ -10,6 +10,9 @@ aiofiles==23.2.1
 beautifulsoup4>=4.12.0
 lxml>=4.9.0
 
+# Rate Limiting
+slowapi>=0.1.9
+
 # Utilities
 python-dotenv>=1.0.0
 python-dateutil==2.8.2

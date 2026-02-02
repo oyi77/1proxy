@@ -5,7 +5,8 @@
   "packageManager": "npm@10.9.2",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node scripts/gh-pages-export.js",
+    "build:standalone": "next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run"

@@ -1,4 +1,5 @@
 import os
+import secrets
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
 
@@ -10,12 +11,20 @@ class Settings(BaseSettings):
     # App Settings
     PROJECT_NAME: str = "1proxy"
     API_V1_STR: str = "/api/v1"
-    SECRET_KEY: str
+
+    # SECRET_KEY: Auto-generate secure default for HuggingFace/development
+    # IMPORTANT: Set this in production via environment variable!
+    SECRET_KEY: str = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
+
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 
-    # URLs
-    API_URL: str = "http://localhost:8000"
-    FRONTEND_URL: str = "http://localhost:3000"
+    # URLs - Auto-detect HuggingFace Space environment
+    API_URL: str = (
+        os.getenv("SPACE_HOST", "").replace("https://", "https://")
+        if os.getenv("SPACE_HOST")
+        else "http://localhost:8000"
+    )
+    FRONTEND_URL: str = os.getenv("SPACE_HOST", "http://localhost:3000")
 
     # OAuth
     GITHUB_CLIENT_ID: str = ""

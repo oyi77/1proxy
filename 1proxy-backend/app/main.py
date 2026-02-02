@@ -71,8 +71,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# CORS middleware configuration - support HF Spaces and local development
-HF_SPACE_DOMAINS = ["*.hf.space", "*.spaces.huggingface.tech"]
+# CORS middleware configuration - support HF Spaces, GitHub Pages, and local development
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -82,6 +81,7 @@ app.add_middleware(
         "http://localhost:8000",
         "https://*.hf.space",
         "https://*.spaces.huggingface.tech",
+        "https://*.github.io",  # GitHub Pages support
     ],
     allow_credentials=True,
     allow_methods=["*"],
