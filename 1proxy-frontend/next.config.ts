@@ -5,6 +5,14 @@ const nextConfig: NextConfig = {
   typescript: {
     tsconfigPath: './tsconfig.json',
   },
+  // Suppress Turbopack workspace detection warning when parent dirs have lockfiles
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  experimental: {
+    turbo: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      resolveExtensions: ['.web.tsx', '.web.ts', '.tsx', '.ts', '.web.js', '.js'] as any,
+    } as any,
+  },
 };
 
 export default nextConfig;

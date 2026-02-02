@@ -13,7 +13,7 @@ from slowapi.errors import RateLimitExceeded
 from app.models import SourceConfig, SourceType
 from app.grabber import GitHubGrabber
 from app.sources import SourceRegistry
-from app.database import init_db, AsyncSessionLocal, get_db
+from app.database import init_db, AsyncSessionLocal, get_db, AsyncSession
 from app.db_storage import db_storage
 from app.routers import auth, sources, proxies, notifications, validation, admin
 from app.dependencies import require_admin
