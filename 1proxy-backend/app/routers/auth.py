@@ -10,6 +10,7 @@ from app.oauth import oauth_handler
 from app.dependencies import get_current_user
 from app.db_models import User
 from app.config import settings
+from app.services.usage import log_usage
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -67,6 +68,9 @@ async def github_callback(
 ):
     try:
         user, token = await oauth_handler.github_callback(code, session)
+        await log_usage(
+            session, user_id=user.id, action="login", resource_type="github"
+        )
 
         response = RedirectResponse(url=f"{settings.FRONTEND_URL}/dashboard")
         response.set_cookie(
@@ -110,6 +114,9 @@ async def google_callback(
     try:
         redirect_uri = f"{settings.API_URL}/auth/google/callback"
         user, token = await oauth_handler.google_callback(code, redirect_uri, session)
+        await log_usage(
+            session, user_id=user.id, action="login", resource_type="google"
+        )
 
         response = RedirectResponse(url=f"{settings.FRONTEND_URL}/dashboard")
         response.set_cookie(
