@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   output: 'export',
   
   // BasePath is essential for the Next.js runtime to handle subdirectories
-  // It ensures client-side navigation and chunk loading use the correct prefix
+  // Default to /1proxy for oyi77.is-a.dev/1proxy deployment
   basePath: process.env.NEXT_PUBLIC_BASE_PATH || '/1proxy',
   
   // Disable image optimization for static export
