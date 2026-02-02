@@ -3,9 +3,10 @@ from app.config import settings
 
 from fastapi import FastAPI, HTTPException, Query, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from typing import Optional
-from sqlalchemy.ext.asyncio import AsyncSession
+import os
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -70,7 +71,8 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# CORS middleware configuration
+# CORS middleware configuration - support HF Spaces and local development
+HF_SPACE_DOMAINS = ["*.hf.space", "*.spaces.huggingface.tech"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -78,11 +80,46 @@ app.add_middleware(
         settings.API_URL,
         "http://localhost:3000",
         "http://localhost:8000",
+        "https://*.hf.space",
+        "https://*.spaces.huggingface.tech",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Serve Next.js frontend static files (built with standalone output)
+# Check multiple possible locations for the frontend build
+frontend_paths = [
+    "/app/frontend",
+    "/app/1proxy-frontend",
+    os.path.join(os.path.dirname(__file__), "../../1proxy-frontend"),
+]
+
+frontend_path = None
+for fp in frontend_paths:
+    if os.path.exists(os.path.join(fp, "server.js")):
+        frontend_path = fp
+        break
+
+if frontend_path:
+    logger.info(f"📦 Serving frontend from: {frontend_path}")
+    # Mount the Next.js build output
+    app.mount(
+        "/static",
+        StaticFiles(directory=os.path.join(frontend_path, ".next/static")),
+        name="static",
+    )
+    app.mount("/_next", StaticFiles(directory=frontend_path), name="next")
+
+    @app.get("/favicon.ico")
+    async def favicon():
+        favicon_path = os.path.join(frontend_path, "public/favicon.ico")
+        if os.path.exists(favicon_path):
+            return FileResponse(favicon_path)
+        return JSONResponse(status_code=204, content={})
+
+
 app.include_router(auth.router)
 app.include_router(sources.router)
 app.include_router(proxies.router)
