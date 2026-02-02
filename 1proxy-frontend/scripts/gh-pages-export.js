@@ -1,108 +1,69 @@
 #!/usr/bin/env node
 /**
  * Post-build script to create GitHub Pages compatible output
- * Copies static files from .next/server/app to out/ directory
- * AND fixes asset paths for subdirectory deployment
+ * Handles Next.js 15 'output: export' with 'basePath'
  */
 
 const fs = require('fs');
 const path = require('path');
 
-// Get the project root (parent of scripts/)
 const projectRoot = path.join(__dirname, '..');
+const rawOutDir = path.join(projectRoot, 'out');
 
-const sourceDir = path.join(projectRoot, '.next/server/app');
-const outDir = path.join(projectRoot, 'out');
-const staticDir = path.join(projectRoot, '.next/static');
-
-// Dynamic BASE_PATH from environment variable
-// Set NEXT_PUBLIC_BASE_PATH='' for root domain deployment
-// Set NEXT_PUBLIC_BASE_PATH='/1proxy' for subdirectory deployment
-const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '/1proxy';
-
-console.log(`🔧 Building for deployment at: ${BASE_PATH || '(root)'}`);
-
-// Create out directory
-if (!fs.existsSync(outDir)) {
-  fs.mkdirSync(outDir, { recursive: true });
+// Fix for Windows Git Bash path mangling
+let BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '/1proxy';
+if (BASE_PATH.includes(':/')) {
+    // Extract the intended path from mangled Windows path (e.g. C:/.../1proxy -> /1proxy)
+    BASE_PATH = '/' + BASE_PATH.split('/').pop();
 }
 
-// Copy static assets
-if (fs.existsSync(staticDir)) {
-  const outStaticDir = path.join(outDir, '_next/static');
-  fs.mkdirSync(outStaticDir, { recursive: true });
-  copyDir(staticDir, outStaticDir);
-  console.log('✅ Copied static assets');
-}
+console.log(`🔧 Processing export for BASE_PATH: ${BASE_PATH}`);
 
-// Copy HTML files and restructure
-function copyHTMLFiles(source, dest) {
-  const entries = fs.readdirSync(source, { withFileTypes: true });
-  
-  for (const entry of entries) {
-    const sourcePath = path.join(source, entry.name);
+// When basePath is set, Next.js exports to out/[basePath]
+// We need to move those files to the root of out/ for GitHub Pages
+const nestedDir = path.join(rawOutDir, BASE_PATH);
+
+if (BASE_PATH && BASE_PATH !== '/' && fs.existsSync(nestedDir)) {
+    console.log(`📦 Flattening nested directory: ${nestedDir}`);
     
-    if (entry.isDirectory()) {
-      const destPath = path.join(dest, entry.name);
-      fs.mkdirSync(destPath, { recursive: true });
-      copyHTMLFiles(sourcePath, destPath);
-    } else if (entry.name.endsWith('.html')) {
-      let content = fs.readFileSync(sourcePath, 'utf8');
-      
-      // Only fix paths if BASE_PATH is set
-      if (BASE_PATH) {
-        content = content
-          .replace(/href="\/_next\//g, `href="${BASE_PATH}/_next/`)
-          .replace(/src="\/_next\//g, `src="${BASE_PATH}/_next/`)
-          .replace(/href="\/favicon\.ico"/g, `href="${BASE_PATH}/favicon.ico"`)
-          .replace(/"\/rotator\.js"/g, `"${BASE_PATH}/rotator.js"`);
-      }
-      
-      const destPath = path.join(dest, entry.name);
-      fs.writeFileSync(destPath, content, 'utf8');
-    }
-  }
-}
-
-function copyDir(source, dest) {
-  if (!fs.existsSync(dest)) {
-    fs.mkdirSync(dest, { recursive: true });
-  }
-  
-  const entries = fs.readdirSync(source, { withFileTypes: true });
-  
-  for (const entry of entries) {
-    const sourcePath = path.join(source, entry.name);
-    const destPath = path.join(dest, entry.name);
+    // Temporary move out of the way
+    const tempDir = path.join(projectRoot, 'out_temp');
+    if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true });
     
-    if (entry.isDirectory()) {
-      copyDir(sourcePath, destPath);
-    } else {
-      fs.copyFileSync(sourcePath, destPath);
+    fs.renameSync(nestedDir, tempDir);
+    fs.rmSync(rawOutDir, { recursive: true });
+    fs.renameSync(tempDir, rawOutDir);
+    
+    console.log('✅ Directory flattened');
+}
+
+// Post-processing cleanup for any path mangling in HTML files
+// This is a safety measure for Windows builds
+function cleanupPaths(dir) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            cleanupPaths(fullPath);
+        } else if (entry.name.endsWith('.html') || entry.name.endsWith('.js') || entry.name.endsWith('.css')) {
+            let content = fs.readFileSync(fullPath, 'utf8');
+            if (content.includes(':/')) {
+                // Remove absolute Windows paths that might have leaked in
+                // Regex matches C:/.../1proxy and replaces it with /1proxy
+                const regex = /[A-Za-z]:\/[^\s"'>]*\/1proxy/g;
+                if (regex.test(content)) {
+                    content = content.replace(regex, BASE_PATH);
+                    fs.writeFileSync(fullPath, content, 'utf8');
+                }
+            }
+        }
     }
-  }
 }
 
-copyHTMLFiles(sourceDir, outDir);
+cleanupPaths(rawOutDir);
 
-// Copy public files (including .nojekyll)
-const publicDir = path.join(projectRoot, 'public');
-if (fs.existsSync(publicDir)) {
-  copyDir(publicDir, outDir);
-  console.log('✅ Copied public files');
-}
+// Add .nojekyll to the final out directory
+fs.writeFileSync(path.join(rawOutDir, '.nojekyll'), '');
+console.log('✅ Added .nojekyll');
 
-// Rename index.html if needed
-const indexPath = path.join(outDir, 'index.html');
-if (!fs.existsSync(indexPath)) {
-  // Find and rename the first HTML file to index.html
-  const files = fs.readdirSync(outDir);
-  const firstHTML = files.find(f => f.endsWith('.html'));
-  if (firstHTML) {
-    fs.renameSync(path.join(outDir, firstHTML), indexPath);
-  }
-}
-
-console.log('✅ GitHub Pages export complete!');
-console.log(`📁 Output directory: ${outDir}`);
-console.log(`🌐 Deployment path: ${BASE_PATH || '(root domain)'}`);
+console.log(`✨ Export complete! Final files in: ${rawOutDir}`);

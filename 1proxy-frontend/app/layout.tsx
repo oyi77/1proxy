@@ -3,9 +3,16 @@ import { AuthProvider } from "@/lib/auth-context";
 import { ThemeProvider } from "@/app/theme-provider";
 import "./globals.css";
 
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '/1proxy';
+
 export const metadata: Metadata = {
   title: "1proxy - Free Proxy Aggregation Platform",
   description: "Robust, Free, Fast Proxy Aggregation Platform",
+  icons: {
+    icon: `${BASE_PATH}/favicon.ico`,
+    shortcut: `${BASE_PATH}/favicon.ico`,
+    apple: `${BASE_PATH}/favicon.ico`,
+  },
 };
 
 export default function RootLayout({

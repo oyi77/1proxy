@@ -4,9 +4,9 @@ const nextConfig: NextConfig = {
   // Static export for GitHub Pages deployment
   output: 'export',
   
-  // Note: basePath is NOT used here because we handle path prefixing
-  // in the post-build script (scripts/gh-pages-export.js)
-  // This allows proper static export while still supporting subdirectory deployment
+  // BasePath is essential for the Next.js runtime to handle subdirectories
+  // It ensures client-side navigation and chunk loading use the correct prefix
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH || '/1proxy',
   
   // Disable image optimization for static export
   images: {
@@ -17,11 +17,8 @@ const nextConfig: NextConfig = {
     tsconfigPath: './tsconfig.json',
   },
   
-  // Suppress Turbopack workspace detection warning when parent dirs have lockfiles
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   experimental: {
     turbo: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       resolveExtensions: ['.web.tsx', '.web.ts', '.tsx', '.ts', '.web.js', '.js'] as any,
     } as any,
   },
