@@ -10,6 +10,7 @@ try:
     HAS_G4F = True
 except ImportError:
     HAS_G4F = False
+    AsyncClient = None  # Ensure attribute exists for patching in tests
 
 logger = logging.getLogger(__name__)
 
