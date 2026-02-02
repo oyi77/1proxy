@@ -43,7 +43,10 @@ jobs:
       - name: Build for GitHub Pages
         run: npm run build
         env:
-          GITHUB_PAGES: 'true'
+          # Set BASE_PATH based on deployment target:
+          # - For custom domain at root: NEXT_PUBLIC_BASE_PATH=''
+          # - For subdirectory (username.github.io/repo): NEXT_PUBLIC_BASE_PATH='/repo'
+          NEXT_PUBLIC_BASE_PATH: '/1proxy'
           NEXT_PUBLIC_API_URL: 'https://paijo77-1proxy.hf.space'
       
       - name: Upload artifact
