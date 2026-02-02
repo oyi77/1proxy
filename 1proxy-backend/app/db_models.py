@@ -85,6 +85,8 @@ class Proxy(Base):
 
     anonymity = Column(String(20), nullable=True, index=True)
     proxy_type = Column(String(20), nullable=True)
+    isp = Column(String(200), nullable=True)
+    org = Column(String(200), nullable=True)
     can_access_google = Column(Boolean, nullable=True)
     quality_score = Column(Integer, nullable=True, index=True)
 

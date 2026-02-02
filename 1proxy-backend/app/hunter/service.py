@@ -11,6 +11,7 @@ from app.db_models import CandidateSource, ProxySource
 from app.hunter.strategies.github import GitHubStrategy
 from app.hunter.strategies.ai import AIStrategy
 from app.hunter.strategies.search import SearchStrategy
+from app.hunter.strategies.telegram import TelegramStrategy
 from app.hunter.extractor import UniversalExtractor
 
 logger = logging.getLogger(__name__)
@@ -18,7 +19,12 @@ logger = logging.getLogger(__name__)
 
 class HunterService:
     def __init__(self):
-        self.strategies = [GitHubStrategy(), AIStrategy(), SearchStrategy()]
+        self.strategies = [
+            GitHubStrategy(),
+            AIStrategy(),
+            SearchStrategy(),
+            TelegramStrategy(),
+        ]
 
     async def run_hunt(self):
         """

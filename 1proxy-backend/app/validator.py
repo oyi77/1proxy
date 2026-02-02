@@ -33,6 +33,8 @@ class ValidationResult(BaseModel):
     country_code: Optional[str] = None
     country_name: Optional[str] = None
     proxy_type: Optional[str] = None
+    isp: Optional[str] = None
+    org: Optional[str] = None
     quality_score: Optional[int] = None
     error_message: Optional[str] = None
 
@@ -135,13 +137,14 @@ class ProxyValidator:
 
         return {"country_code": None, "country_name": None, "state": None, "city": None}
 
-    async def detect_proxy_type(self, ip: str) -> str:
+    async def detect_proxy_type(self, ip: str) -> dict:
         try:
             async with aiohttp.ClientSession(timeout=self.timeout) as session:
                 async with session.get(f"https://ipinfo.io/{ip}/json") as resp:
                     if resp.status == 200:
                         data = await resp.json()
                         org = data.get("org", "").lower()
+                        isp = data.get("hostname", "").lower()
 
                         datacenter_keywords = [
                             "amazon",
@@ -159,15 +162,22 @@ class ProxyValidator:
                             "cloud",
                         ]
 
+                        proxy_type = "residential"
                         for keyword in datacenter_keywords:
-                            if keyword in org:
-                                return "datacenter"
+                            if keyword in org or keyword in isp:
+                                proxy_type = "datacenter"
+                                break
 
-                        return "residential"
+                        return {
+                            "proxy_type": proxy_type,
+                            "isp": data.get("org"),
+                            "org": data.get("company", {}).get("name")
+                            or data.get("org"),
+                        }
         except Exception:
             pass
 
-        return "unknown"
+        return {"proxy_type": "unknown", "isp": None, "org": None}
 
     async def calculate_quality_score(
         self,
@@ -211,7 +221,7 @@ class ProxyValidator:
         if not is_valid:
             return ValidationResult(success=False, error_message=error)
 
-        anonymity, can_access_google, geo_info, proxy_type = await asyncio.gather(
+        results = await asyncio.gather(
             self.check_anonymity(proxy_url),
             self.test_google_access(proxy_url),
             self.get_geo_info(ip),
@@ -219,14 +229,18 @@ class ProxyValidator:
             return_exceptions=True,
         )
 
-        if isinstance(anonymity, Exception):
-            anonymity = None
-        if isinstance(can_access_google, Exception):
-            can_access_google = None
-        if isinstance(geo_info, Exception):
-            geo_info = {}
-        if isinstance(proxy_type, Exception):
-            proxy_type = "unknown"
+        anonymity = results[0] if not isinstance(results[0], Exception) else None
+        can_access_google = (
+            results[1] if not isinstance(results[1], Exception) else None
+        )
+        geo_info = results[2] if not isinstance(results[2], Exception) else {}
+        type_info = (
+            results[3]
+            if not isinstance(results[3], Exception)
+            else {"proxy_type": "unknown"}
+        )
+
+        proxy_type = type_info.get("proxy_type", "unknown")
 
         quality_score = await self.calculate_quality_score(
             latency_ms, anonymity, can_access_google, proxy_type
@@ -240,6 +254,8 @@ class ProxyValidator:
             country_code=geo_info.get("country_code"),
             country_name=geo_info.get("country_name"),
             proxy_type=proxy_type,
+            isp=type_info.get("isp"),
+            org=type_info.get("org"),
             quality_score=quality_score,
             error_message=None,
         )
