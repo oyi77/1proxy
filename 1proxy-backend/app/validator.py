@@ -38,7 +38,7 @@ class ValidationResult(BaseModel):
 
 
 class ProxyValidator:
-    def __init__(self, timeout: int = 10, max_concurrent: int = 100):
+    def __init__(self, timeout: int = 10, max_concurrent: int = 20):
         self.timeout = aiohttp.ClientTimeout(total=timeout)
         self.semaphore = asyncio.Semaphore(max_concurrent)
 

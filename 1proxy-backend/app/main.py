@@ -158,17 +158,24 @@ async def startup():
             logger.warning(f"⚠️  Startup error (non-critical): {e}")
             await session.rollback()
 
-    # Start background workers
-    asyncio.create_task(
-        background_validation_worker(batch_size=50, interval_seconds=60)
-    )
+    # STARTUP STABILIZER: Wait for HF Space to pass health check before spawning workers
+    async def delayed_workers():
+        logger.info("⏳ Stabilizer: Waiting 15s before starting background workers...")
+        await asyncio.sleep(15)
 
-    # Import and start auto-scraper
-    from app.background_validator import background_scraper_worker
+        logger.info("🚀 Stabilizer: Spawning background workers...")
+        # Start validation worker with reduced batch size for HF
+        asyncio.create_task(
+            background_validation_worker(batch_size=20, interval_seconds=60)
+        )
 
-    asyncio.create_task(
-        background_scraper_worker(interval_minutes=10)  # Scrape every 10 minutes
-    )
+        # Import and start auto-scraper
+        from app.background_validator import background_scraper_worker
+
+        asyncio.create_task(background_scraper_worker(interval_minutes=10))
+        logger.info("✅ Stabilizer: Background workers active")
+
+    asyncio.create_task(delayed_workers())
 
 
 @app.get("/")

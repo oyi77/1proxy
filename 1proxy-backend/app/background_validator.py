@@ -119,8 +119,11 @@ async def background_validation_worker(
             await asyncio.sleep(interval_seconds)
 
 
-async def revalidate_old_proxies(hours: int = 24, batch_size: int = 50):
+async def revalidate_old_proxies(hours: int = 24, batch_size: int = 20):
     """Revalidate proxies that haven't been checked in X hours"""
+    # Wait for initial surge to pass
+    await asyncio.sleep(60)
+
     from sqlalchemy import select, or_
     from app.db_models import Proxy
 
