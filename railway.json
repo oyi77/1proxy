@@ -4,9 +4,7 @@
     "context": "."
   },
   "deploy": {
-    "numReplicas": 1,
-    "sleepApplication": false,
-    "restartPolicyType": "ON_FAILURE",
+    "sleepApplication": true,
     "healthCheckPath": "/health",
     "healthCheckTimeout": 100
   }
