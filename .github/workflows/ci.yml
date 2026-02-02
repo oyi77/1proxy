@@ -23,6 +23,7 @@ jobs:
       - name: Run tests with pytest
         run: |
           cd 1proxy-backend
+          export PYTHONPATH=$PYTHONPATH:.
           pytest tests/ --cov=app -m "not slow"
 
   frontend-check:
@@ -46,4 +47,7 @@ jobs:
       - name: Build
         run: |
           cd 1proxy-frontend
-          npm run build
+          npm run build:clean
+        env:
+          NEXT_PUBLIC_BASE_PATH: '/1proxy'
+          NEXT_PUBLIC_API_URL: 'https://paijo77-1proxy.hf.space'

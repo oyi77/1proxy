@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build && node scripts/gh-pages-export.js",
+    "build:clean": "rm -rf out .next && next build && node scripts/gh-pages-export.js",
     "build:standalone": "next build",
     "start": "next start",
     "lint": "next lint",
