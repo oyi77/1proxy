@@ -4,9 +4,9 @@ const nextConfig: NextConfig = {
   // Static export for GitHub Pages deployment
   output: 'export',
   
-  // BasePath is essential for the Next.js runtime to handle subdirectories
-  // Default to /1proxy for oyi77.is-a.dev/1proxy deployment
-  basePath: process.env.NEXT_PUBLIC_BASE_PATH || '/1proxy',
+  // Set empty basePath and handle pathing in post-build script
+  // This produces standard paths that are easy to make relative/portable
+  basePath: '',
   
   // Disable image optimization for static export
   images: {
