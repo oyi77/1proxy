@@ -6,11 +6,15 @@ from app.hunter.strategy import BaseStrategy
 # Try to import g4f, but handle failure if not installed (though we just installed it)
 try:
     from g4f.client import AsyncClient
+    from g4f.Provider import RetryProvider, PollinationsAI, BlackboxPro
 
     HAS_G4F = True
 except ImportError:
     HAS_G4F = False
     AsyncClient = None  # Ensure attribute exists for patching in tests
+    RetryProvider = None
+    PollinationsAI = None
+    BlackboxPro = None
 
 logger = logging.getLogger(__name__)
 
@@ -32,10 +36,6 @@ class AIStrategy(BaseStrategy):
             return []
 
         try:
-            # Explicitly select a provider that often works without auth
-            # Using RetryProvider to automatically try multiple free providers
-            from g4f.Provider import RetryProvider, PollinationsAI, BlackboxPro
-
             # Simple list of providers that don't usually fail with auth errors
             providers = [PollinationsAI, BlackboxPro]
 

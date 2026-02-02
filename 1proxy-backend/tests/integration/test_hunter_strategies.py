@@ -38,22 +38,36 @@ async def test_github_strategy():
 async def test_ai_strategy():
     strategy = AIStrategy()
 
-    # Mock g4f AsyncClient
-    with patch("app.hunter.strategies.ai.AsyncClient") as mock_client_cls:
+    # Create mock response structure
+    mock_choice = MagicMock()
+    mock_choice.message.content = (
+        "Sure! https://pastebin.com/raw/abcd and https://github.com/raw/xyz"
+    )
+
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
+
+    # Mock g4f components
+    with (
+        patch("app.hunter.strategies.ai.AsyncClient") as mock_client_cls,
+        patch("app.hunter.strategies.ai.HAS_G4F", True),
+        patch("app.hunter.strategies.ai.RetryProvider", MagicMock()),
+        patch("app.hunter.strategies.ai.PollinationsAI", MagicMock()),
+        patch("app.hunter.strategies.ai.BlackboxPro", MagicMock()),
+    ):
         mock_client = AsyncMock()
         mock_client_cls.return_value = mock_client
 
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[
-            0
-        ].message.content = (
-            "Sure! https://pastebin.com/raw/abcd and https://github.com/raw/xyz"
-        )
-
+        # Set return value for create
         mock_client.chat.completions.create.return_value = mock_response
 
         urls = await strategy.discover()
+
+        # Debug info if fails
+        if len(urls) != 2:
+            print(f"\nDEBUG: discover returned {urls}")
+            print(f"DEBUG: AsyncClient patched: {mock_client_cls.called}")
+            print(f"DEBUG: create called: {mock_client.chat.completions.create.called}")
 
         assert len(urls) == 2
         assert "https://pastebin.com/raw/abcd" in urls
