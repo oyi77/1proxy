@@ -6,7 +6,7 @@ This document is optimized for LLMs to quickly understand the project structure,
 - **Repository**: `oyi77/1proxy`
 - **Primary Branch**: `main`
 - **Frontend URL**: `https://oyi77.is-a.dev/1proxy/`
-- **Backend API URL**: `https://paijo77-1proxy.hf.space`
+- **Backend API URL**: `https://helpful-alignment-production-2ae5.up.railway.app`
 
 ## 🏗️ Technical Architecture
 
@@ -17,7 +17,7 @@ graph TD
         API_USER[Direct API Users]
     end
 
-    subgraph "Infrastructure (HF)"
+    subgraph "Infrastructure (Railway)"
         F[FastAPI App]
         S[Background Scheduler]
         V[Proxy Validator]
@@ -50,11 +50,11 @@ graph TD
 
 ## 📦 Deployment Commands
 
-### Backend (HuggingFace)
+### Backend (Railway)
+The backend is auto-deployed via GitHub push or manual Railway CLI:
 ```bash
-python upload_hf.py
+railway up
 ```
-*Note: Ensure `HF_TOKEN` is set or the script is updated with your valid token.*
 
 ### Frontend (GitHub Pages)
 The frontend is auto-deployed via GitHub Actions on every push to `main`.
@@ -68,13 +68,14 @@ NEXT_PUBLIC_BASE_PATH='/1proxy' npm run build
 1. **Async-Only**: All database and network I/O must be `async/await`. No blocking `requests` or `time.sleep`.
 2. **Path Mapping**: When deploying to subdirectory, `NEXT_PUBLIC_BASE_PATH` must match the URL path.
 3. **Validation**: No proxy is served to the public until `ProxyValidator.validate()` sets `is_active=True`.
-4. **Secrets**: Never commit `.env`. Use HF Secrets or GH Secrets.
+4. **Secrets**: Never commit `.env`. Use Railway Variables or GH Secrets.
 
 ## 📁 Critical Files
 - `1proxy-backend/app/main.py`: App Entry & CORS
 - `1proxy-backend/app/validator.py`: Quality Scoring Logic
 - `1proxy-frontend/next.config.ts`: Export & Path Settings
-- `hf-spaces/Dockerfile`: Production Build Recipe
+- `1proxy-backend/Dockerfile.railway`: Production Build Recipe
+- `railway.json`: Railway Service Config
 
 ---
 *Assistant Hint: Always check `AGENTS.md` in each subdirectory for domain-specific deep context.*

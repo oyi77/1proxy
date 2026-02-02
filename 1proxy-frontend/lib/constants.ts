@@ -1,8 +1,8 @@
 // The subdirectory where the app is deployed on GitHub Pages
 export const BASE_PATH = "/1proxy";
 
-// The production backend API URL (HuggingFace)
-export const API_URL = "https://paijo77-1proxy.hf.space";
+// The production backend API URL (Railway)
+export const API_URL = "https://helpful-alignment-production-2ae5.up.railway.app";
 
 /**
  * Ensures a path is correctly prefixed with the BASE_PATH

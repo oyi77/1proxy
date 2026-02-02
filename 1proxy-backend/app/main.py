@@ -71,7 +71,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# CORS middleware configuration - support HF Spaces, GitHub Pages, and local development
+# CORS middleware configuration - support HF Spaces, Railway, GitHub Pages, and local development
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -82,6 +82,8 @@ app.add_middleware(
         "https://*.hf.space",
         "https://*.spaces.huggingface.tech",
         "https://*.github.io",  # GitHub Pages support
+        "https://*.railway.app",  # Railway support
+        "https://oyi77.is-a.dev",  # Main domain
     ],
     allow_credentials=True,
     allow_methods=["*"],
