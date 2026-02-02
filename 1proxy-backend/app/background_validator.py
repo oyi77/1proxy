@@ -151,10 +151,9 @@ async def revalidate_old_proxies(hours: int = 24, batch_size: int = 20):
                 logger.info("✅ No old proxies to revalidate")
                 return
 
-            for proxy in old_proxies:
-                proxy.validation_status = "pending"
-
-            await session.commit()
+            # Note: We NO LONGER set validation_status = "pending" here.
+            # This ensures proxies stay visible in the UI while being re-checked.
+            # validate_and_update_proxies now handles non-pending IDs if passed explicitly.
 
             validation_result = await db_storage.validate_and_update_proxies(
                 session, proxy_ids=[p.id for p in old_proxies]

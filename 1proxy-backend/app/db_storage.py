@@ -199,6 +199,10 @@ class DatabaseStorage:
                         if existing:
                             existing.last_seen = now
                             existing.updated_at = now
+                            # Give failed proxies another chance if seen again by scraper
+                            if existing.validation_status == "failed":
+                                existing.validation_status = "pending"
+                                # We don't set is_working=True yet, keep it False until validated
                         else:
                             proxy = Proxy(**proxy_dict)
                             session.add(proxy)
@@ -242,6 +246,9 @@ class DatabaseStorage:
                 if existing:
                     existing.last_seen = now
                     existing.updated_at = now
+                    # Give failed proxies another chance if seen again by scraper
+                    if existing.validation_status == "failed":
+                        existing.validation_status = "pending"
                 else:
                     proxy = Proxy(**proxy_data)
                     session.add(proxy)
@@ -262,9 +269,8 @@ class DatabaseStorage:
     ) -> dict:
         """Validate pending proxies and update their status"""
         if proxy_ids:
-            query = select(Proxy).where(
-                Proxy.id.in_(proxy_ids), Proxy.validation_status == "pending"
-            )
+            # If specific IDs provided (e.g. for revalidation), don't filter by pending status
+            query = select(Proxy).where(Proxy.id.in_(proxy_ids))
         else:
             query = (
                 select(Proxy).where(Proxy.validation_status == "pending").limit(limit)
