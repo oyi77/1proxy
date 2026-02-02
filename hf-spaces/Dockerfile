@@ -3,12 +3,14 @@ FROM python:3.12
 
 WORKDIR /app
 
-# Copy everything at once to reduce layers
-COPY hf-spaces/requirements.txt .
+# Copy requirements first for better layer caching
+COPY hf-spaces/requirements.txt /tmp/requirements.txt
+
+# Copy application code
 COPY 1proxy-backend/ ./1proxy-backend/
 
 # Install dependencies
-RUN pip install --no-cache-dir -r hf-spaces/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 # Create data directory
 RUN mkdir -p /app/data
