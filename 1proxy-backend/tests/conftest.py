@@ -1,10 +1,17 @@
 import pytest
 import asyncio
 import base64
+import os
 from typing import List
 from app.models.proxy import Proxy, ValidationResult
 from app.models.source import SourceConfig, SourceType
 from app.database import engine, Base
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_env():
+    """Ensure data directory exists for SQLite."""
+    os.makedirs("./data", exist_ok=True)
 
 
 @pytest.fixture(scope="session")
