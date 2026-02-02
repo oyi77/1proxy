@@ -4,14 +4,14 @@ const nextConfig: NextConfig = {
   // Static export for GitHub Pages deployment
   output: 'export',
   
+  // Note: basePath is NOT used here because we handle path prefixing
+  // in the post-build script (scripts/gh-pages-export.js)
+  // This allows proper static export while still supporting subdirectory deployment
+  
   // Disable image optimization for static export
   images: {
     unoptimized: true,
   },
-  
-  // Remove basePath for simpler deployment
-  // Will deploy to: https://username.github.io/1proxy/
-  // basePath: '/1proxy',
   
   typescript: {
     tsconfigPath: './tsconfig.json',
