@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useTheme } from "@/app/theme-provider";
 import { api, type Source } from "@/lib/api";
+import { getFullUrl } from "@/lib/constants";
 
 export default function SourcesPage() {
   const { theme } = useTheme();
@@ -24,8 +25,6 @@ export default function SourcesPage() {
       setLoading(false);
     }
   };
-
-
 
   if (loading) {
     return (
@@ -49,7 +48,7 @@ export default function SourcesPage() {
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <Link
-            href="/"
+            href={getFullUrl("/")}
             className="retro-button px-4 py-2 rounded-lg font-bold inline-flex items-center gap-2"
             style={{
               backgroundColor: theme === 'dark' ? 'var(--dark-bg)' : '#F0F0F0',

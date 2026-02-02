@@ -222,7 +222,7 @@ export function HomeClient() {
 
         <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-3">
           <a
-            href="https://github.com/yourusername/1proxy"
+            href="https://github.com/oyi77/1proxy"
             target="_blank"
             rel="noopener noreferrer"
             className="retro-button px-4 py-3 rounded-lg flex items-center justify-center gap-2 font-bold"

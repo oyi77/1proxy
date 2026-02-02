@@ -1,3 +1,5 @@
+import { getFullUrl } from "@/lib/constants";
+
 interface RotationFilters {
   protocol: string;
   country: string;
@@ -196,7 +198,7 @@ export function RotationTab({
             </p>
             <div className="flex gap-4 mb-4">
               <a
-                href="/rotator.js"
+                href={getFullUrl("/rotator.js")}
                 download="rotator.js"
                 className="retro-button px-6 py-3 font-bold rounded-lg flex items-center gap-2"
                 style={{

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useTheme } from "@/app/theme-provider";
 import { useAuth, ProtectedRoute } from "@/lib/auth-context";
+import { getFullUrl, API_URL } from "@/lib/constants";
 
 interface Source {
   id: number;
@@ -32,6 +33,8 @@ function DashboardContent() {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || API_URL;
+
   useEffect(() => {
     loadUserData();
   }, []);
@@ -39,8 +42,8 @@ function DashboardContent() {
   const loadUserData = async () => {
     try {
       const [sourcesRes, statsRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/my-sources`, { credentials: "include" }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/my-stats`, { credentials: "include" })
+        fetch(`${API_BASE}/api/v1/my-sources`, { credentials: "include" }),
+        fetch(`${API_BASE}/api/v1/my-stats`, { credentials: "include" })
       ]);
 
       if (sourcesRes.ok) {
@@ -63,7 +66,7 @@ function DashboardContent() {
     if (!confirm("Are you sure you want to delete this source?")) return;
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/my-sources/${id}`, {
+      const res = await fetch(`${API_BASE}/api/v1/my-sources/${id}`, {
         method: "DELETE",
         credentials: "include"
       });
@@ -118,7 +121,7 @@ function DashboardContent() {
           <div className="flex gap-3">
             {user?.role === 'admin' && (
               <Link
-                href="/admin"
+                href={getFullUrl("/admin")}
                 className="retro-button px-6 py-3 rounded-lg font-bold"
                 style={{
                   backgroundColor: 'var(--retro-purple)',
@@ -237,7 +240,7 @@ function DashboardContent() {
               My Sources
             </h2>
             <Link
-              href="/dashboard/add-source"
+              href={getFullUrl("/dashboard/add-source")}
               className="retro-button px-6 py-3 rounded-lg font-bold"
               style={{
                 backgroundColor: 'var(--retro-blue)',
@@ -262,7 +265,7 @@ function DashboardContent() {
                 You haven&apos;t added any sources yet.
               </p>
               <Link
-                href="/dashboard/add-source"
+                href={getFullUrl("/dashboard/add-source")}
                 className="inline-block"
                 style={{
                   color: 'var(--retro-pink)',
@@ -379,7 +382,7 @@ function DashboardContent() {
                       <td className="py-4 px-4">
                         <div className="flex gap-3 flex-wrap">
                           <Link
-                            href={`/dashboard/sources/${source.id}/edit`}
+                            href={getFullUrl(`/dashboard/sources/${source.id}/edit`)}
                             className="font-bold text-sm"
                             style={{
                               color: 'var(--retro-pink)',
@@ -423,7 +426,7 @@ function DashboardContent() {
 
         <div className="mt-6">
           <Link
-            href="/"
+            href={getFullUrl("/")}
             className="retro-button px-6 py-3 rounded-lg font-bold inline-block"
             style={{
               backgroundColor: theme === 'dark' ? 'var(--dark-bg)' : '#F0F0F0',

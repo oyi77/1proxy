@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/lib/auth-context';
 import Link from 'next/link';
+import { getFullUrl, API_URL } from '@/lib/constants';
 
 export default function AddSourcePage() {
   const router = useRouter();
@@ -17,6 +18,8 @@ export default function AddSourcePage() {
     description: '',
     is_paid: false,
   });
+
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || API_URL;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target as any;
@@ -33,7 +36,7 @@ export default function AddSourcePage() {
     setValidationInfo(null);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/my-sources`, {
+      const response = await fetch(`${API_BASE}/api/v1/my-sources`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -44,7 +47,7 @@ export default function AddSourcePage() {
         const data = await response.json();
         setValidationInfo(data.validation);
         setTimeout(() => {
-          router.push('/dashboard');
+          router.push(getFullUrl('/dashboard'));
         }, 1500);
       } else {
         const data = await response.json();
@@ -62,7 +65,7 @@ export default function AddSourcePage() {
       <div className="min-h-screen bg-gray-50 py-12 px-4">
         <div className="max-w-2xl mx-auto">
           <div className="mb-6">
-            <Link href="/dashboard" className="text-blue-600 hover:text-blue-700">
+            <Link href={getFullUrl("/dashboard")} className="text-blue-600 hover:text-blue-700">
               ← Back to Dashboard
             </Link>
           </div>

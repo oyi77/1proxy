@@ -3,10 +3,13 @@
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Suspense } from 'react';
+import { getFullUrl, API_URL } from '@/lib/constants';
 
 function LoginContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
+
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || API_URL;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
@@ -28,7 +31,7 @@ function LoginContent() {
 
         <div className="space-y-3">
           <a
-            href={`${process.env.NEXT_PUBLIC_API_URL}/auth/github`}
+            href={`${API_BASE}/auth/github`}
             className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-lg hover:bg-gray-800 transition font-medium"
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" suppressHydrationWarning>
@@ -38,7 +41,7 @@ function LoginContent() {
           </a>
 
           <a
-            href={`${process.env.NEXT_PUBLIC_API_URL}/auth/google`}
+            href={`${API_BASE}/auth/google`}
             className="w-full flex items-center justify-center gap-2 bg-white border-2 border-gray-300 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-50 transition font-medium"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" suppressHydrationWarning>
@@ -59,7 +62,7 @@ function LoginContent() {
 
         <div className="pt-4">
           <Link
-            href="/"
+            href={getFullUrl('/')}
             className="text-center text-sm text-blue-600 hover:text-blue-700 block"
           >
             Back to home

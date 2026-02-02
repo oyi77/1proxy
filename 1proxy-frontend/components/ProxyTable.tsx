@@ -167,7 +167,7 @@ export function ProxyTable({
                     {proxy.country_code ? (
                       <div className="flex items-center gap-2">
                         <Image
-                          src={`https://flagcdn.com/20x15/${proxy.country_code.toLowerCase()}.png`}
+                          src={`https://flagcdn.com/w40/${proxy.country_code.toLowerCase()}.png`}
                           alt={proxy.country_name || proxy.country_code}
                           width={20}
                           height={15}

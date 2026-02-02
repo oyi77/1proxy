@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ProxyTable } from "@/components/ProxyTable";
 import { type Proxy } from "@/lib/api";
+import { getFullUrl } from "@/lib/constants";
 
 interface ProxiesTabProps {
   proxies: Proxy[];
@@ -65,7 +66,7 @@ export function ProxiesTab({
 
       <div className="flex flex-col sm:flex-row gap-3">
         <Link
-          href="/sources"
+          href={getFullUrl("/sources")}
           className="retro-button px-6 py-3 rounded-lg text-center font-bold"
           style={{
             backgroundColor: theme === "dark" ? "var(--dark-bg)" : "#F0F0F0",

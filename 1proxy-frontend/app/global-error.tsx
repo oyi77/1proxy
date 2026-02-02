@@ -1,5 +1,7 @@
 'use client'
 
+import { getFullUrl } from '@/lib/constants'
+
 export default function GlobalError({
   error,
   reset,
@@ -41,7 +43,7 @@ export default function GlobalError({
                 </button>
                 
                 <button
-                  onClick={() => window.location.href = '/'}
+                  onClick={() => window.location.href = getFullUrl('/')}
                   className="w-full px-6 py-3 bg-gray-700 text-white font-bold rounded 
                            hover:bg-gray-600 transition-all border-2 border-gray-600"
                 >

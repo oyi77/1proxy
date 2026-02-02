@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { getFullUrl } from '@/lib/constants'
 
 export default function Error({
   error,
@@ -48,7 +49,7 @@ export default function Error({
             </button>
             
             <button
-              onClick={() => window.location.href = '/'}
+              onClick={() => window.location.href = getFullUrl('/')}
               className="w-full px-6 py-3 bg-retro-purple text-white font-bold rounded 
                        hover:bg-retro-purple/80 transition-all
                        border-2 border-retro-purple"
