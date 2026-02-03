@@ -9,10 +9,8 @@ from app.main import app
 from app.dependencies import get_current_user
 from app.db_models import User
 
-client = TestClient(app)
 
-
-def test_admin_endpoints_require_authentication():
+def test_admin_endpoints_require_authentication(client):
     """Test that admin endpoints return 401 when not authenticated."""
     # Try to access admin stats without authentication
     response = client.get("/api/v1/admin/validation-stats")
@@ -25,7 +23,7 @@ def test_admin_endpoints_require_authentication():
     assert response.status_code == 401 or response.status_code == 403
 
 
-def test_admin_endpoints_reject_regular_users():
+def test_admin_endpoints_reject_regular_users(client):
     """Test that admin endpoints return 403 when accessed by non-admin users."""
 
     # Mock a regular user (not admin)
@@ -55,7 +53,7 @@ def test_admin_endpoints_reject_regular_users():
         app.dependency_overrides.clear()
 
 
-def test_scrape_endpoints_require_admin():
+def test_scrape_endpoints_require_admin(client):
     """Test that scrape endpoints require admin authentication."""
     # Test without authentication
     response = client.post(
@@ -71,7 +69,7 @@ def test_scrape_endpoints_require_admin():
     assert response.status_code == 401 or response.status_code == 403
 
 
-def test_scrape_endpoints_reject_regular_users():
+def test_scrape_endpoints_reject_regular_users(client):
     """Test that scrape endpoints reject regular users."""
 
     def get_mock_user():
@@ -102,7 +100,7 @@ def test_scrape_endpoints_reject_regular_users():
         app.dependency_overrides.clear()
 
 
-def test_admin_user_can_access_admin_endpoints():
+def test_admin_user_can_access_admin_endpoints(client):
     """Test that admin users CAN access admin endpoints."""
 
     def get_mock_admin():
@@ -132,7 +130,7 @@ def test_admin_user_can_access_admin_endpoints():
         app.dependency_overrides.clear()
 
 
-def test_public_endpoints_remain_accessible():
+def test_public_endpoints_remain_accessible(client):
     """Test that public endpoints don't require authentication."""
     # These endpoints should be accessible without auth
     response = client.get("/")

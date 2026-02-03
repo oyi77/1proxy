@@ -19,6 +19,7 @@ from app.routers import auth, sources, proxies, notifications, validation, admin
 from app.dependencies import require_admin
 from app.db_models import User
 from app.background_validator import background_validation_worker
+from app.metrics import metrics_app
 import asyncio
 import logging
 
@@ -38,6 +39,9 @@ app = FastAPI(
 # Add rate limiter state
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Mount Prometheus metrics
+app.mount("/metrics", metrics_app)
 
 
 # Global exception handler to prevent leaking internal errors

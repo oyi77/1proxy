@@ -324,11 +324,12 @@ class TestProxyValidator:
             mock_session.__aexit__.return_value = None
 
             with patch("aiohttp.ClientSession", return_value=mock_session):
-                proxy_type = await validator.detect_proxy_type("1.2.3.4")
+                result = await validator.detect_proxy_type("1.2.3.4")
 
-            assert proxy_type == "datacenter", (
+            assert result["proxy_type"] == "datacenter", (
                 f"Should detect datacenter for {data['org']}"
             )
+            assert result["org"] == data["org"]
 
     @pytest.mark.asyncio
     async def test_detect_proxy_type_residential(self, validator):
@@ -345,9 +346,9 @@ class TestProxyValidator:
         mock_session.__aexit__.return_value = None
 
         with patch("aiohttp.ClientSession", return_value=mock_session):
-            proxy_type = await validator.detect_proxy_type("1.2.3.4")
+            result = await validator.detect_proxy_type("1.2.3.4")
 
-        assert proxy_type == "residential"
+        assert result["proxy_type"] == "residential"
 
     @pytest.mark.asyncio
     async def test_detect_proxy_type_error(self, validator):
@@ -358,9 +359,9 @@ class TestProxyValidator:
         mock_session.__aexit__.return_value = None
 
         with patch("aiohttp.ClientSession", return_value=mock_session):
-            proxy_type = await validator.detect_proxy_type("1.2.3.4")
+            result = await validator.detect_proxy_type("1.2.3.4")
 
-        assert proxy_type == "unknown"
+        assert result["proxy_type"] == "unknown"
 
     # ==================== QUALITY SCORE CALCULATION ====================
 
@@ -441,7 +442,13 @@ class TestProxyValidator:
                         },
                     ):
                         with patch.object(
-                            validator, "detect_proxy_type", return_value="datacenter"
+                            validator,
+                            "detect_proxy_type",
+                            return_value={
+                                "proxy_type": "datacenter",
+                                "isp": "Amazon",
+                                "org": "AWS",
+                            },
                         ):
                             result = await validator.validate_comprehensive(
                                 "http://1.2.3.4:8080", "1.2.3.4"

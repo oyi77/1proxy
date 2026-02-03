@@ -230,3 +230,62 @@ class BackgroundTask(Base):
     __table_args__ = (
         Index("idx_background_task_status_scheduled", "status", "scheduled_for"),
     )
+
+
+class UsageLog(Base):
+    __tablename__ = "usage_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    action = Column(String(50), nullable=False)
+    resource_type = Column(String(50), nullable=True)
+    resource_id = Column(Integer, nullable=True)
+    meta_data = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+    user = relationship("User", backref="usage_logs")
+
+
+class ProxyPerformanceHistory(Base):
+    __tablename__ = "proxy_performance_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    proxy_id = Column(
+        Integer,
+        ForeignKey("proxies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    validated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+    latency_ms = Column(Float, nullable=True)
+    latency_p50 = Column(Float, nullable=True)
+    latency_p95 = Column(Float, nullable=True)
+    uptime_percent = Column(Float, nullable=True)
+    packet_loss = Column(Float, nullable=True)
+    jitter_ms = Column(Float, nullable=True)
+    success = Column(Boolean, nullable=False, default=False)
+
+    proxy = relationship("Proxy", backref="performance_history")
+
+
+class SourceTrustScore(Base):
+    __tablename__ = "source_trust_scores"
+
+    id = Column(Integer, primary_key=True, index=True)
+    source_id = Column(
+        Integer,
+        ForeignKey("proxy_sources.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    trust_score = Column(Float, default=50.0)
+    confidence = Column(Float, default=0.0)
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    source = relationship("ProxySource", backref="trust_score")
