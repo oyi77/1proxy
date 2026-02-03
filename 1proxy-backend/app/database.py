@@ -5,6 +5,12 @@ import os
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./data/1proxy.db")
 
+# Ensure asynchronous driver is used for PostgreSQL
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+elif DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 # Auto-create data directory for SQLite if it doesn't exist
 if "sqlite" in DATABASE_URL and "./data/" in DATABASE_URL:
     os.makedirs("./data", exist_ok=True)

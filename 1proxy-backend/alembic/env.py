@@ -1,4 +1,6 @@
 from logging.config import fileConfig
+from dotenv import load_dotenv
+load_dotenv()
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
@@ -9,8 +11,15 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from app.database import Base
+from app.database import Base, DATABASE_URL
 from app.db_models import User, ProxySource, Proxy, ValidationHistory
+
+def get_url():
+    url = DATABASE_URL
+    # Override if using async driver for Alembic (which is sync)
+    if "postgresql+asyncpg" in url:
+        url = url.replace("postgresql+asyncpg", "postgresql")
+    return url
 
 config = context.config
 
@@ -37,7 +46,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = get_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -56,8 +65,10 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    configuration = config.get_section(config.config_ini_section, {})
+    configuration["sqlalchemy.url"] = get_url()
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
