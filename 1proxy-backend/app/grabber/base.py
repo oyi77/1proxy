@@ -84,4 +84,54 @@ class BaseGrabber(ABC):
             except ValueError:
                 continue
 
+        # SOCKS4 proxies - extract from prefixed URLs and raw IP:PORT
+        socks4_urls = ProxyPatterns.extract_socks4_urls(content)
+        for url in socks4_urls:
+            try:
+                # Parse socks4://ip:port or socks4://user:pass@ip:port
+                url_stripped = url.strip()
+                if url_stripped.startswith("socks4://"):
+                    url_stripped = url_stripped[9:]
+                # Handle authentication: user:pass@ip:port
+                if "@" in url_stripped:
+                    url_stripped = url_stripped.split("@")[-1]
+                if ":" in url_stripped:
+                    ip, port = url_stripped.split(":", 1)
+                    port = port.split("/")[0].strip()  # Remove path if exists
+                    proxies.append(
+                        Proxy(
+                            ip=ip.strip(),
+                            port=int(port),
+                            protocol="socks4",
+                            source=str(source_type),
+                        )
+                    )
+            except (ValueError, IndexError):
+                continue
+
+        # SOCKS5 proxies - extract from prefixed URLs and raw IP:PORT
+        socks5_urls = ProxyPatterns.extract_socks5_urls(content)
+        for url in socks5_urls:
+            try:
+                # Parse socks5://ip:port or socks5://user:pass@ip:port
+                url_stripped = url.strip()
+                if url_stripped.startswith("socks5://"):
+                    url_stripped = url_stripped[9:]
+                # Handle authentication: user:pass@ip:port
+                if "@" in url_stripped:
+                    url_stripped = url_stripped.split("@")[-1]
+                if ":" in url_stripped:
+                    ip, port = url_stripped.split(":", 1)
+                    port = port.split("/")[0].strip()  # Remove path if exists
+                    proxies.append(
+                        Proxy(
+                            ip=ip.strip(),
+                            port=int(port),
+                            protocol="socks5",
+                            source=str(source_type),
+                        )
+                    )
+            except (ValueError, IndexError):
+                continue
+
         return proxies

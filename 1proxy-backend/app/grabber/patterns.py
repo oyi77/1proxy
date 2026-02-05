@@ -17,6 +17,22 @@ class ProxyPatterns:
 
     SS_URL = re.compile(r"ss://[A-Za-z0-9+/=]+@[a-zA-Z0-9.-]+:[0-9]+")
 
+    SOCKS4_IP_PORT = re.compile(
+        r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}"
+        r"(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)"
+        r":([0-9]{1,5})\b"
+    )
+
+    SOCKS5_IP_PORT = re.compile(
+        r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}"
+        r"(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)"
+        r":([0-9]{1,5})\b"
+    )
+
+    # SOCKS4/SOCKS5 patterns with explicit protocol prefix
+    SOCKS4_PREFIX = re.compile(r"socks4://[^\s]+")
+    SOCKS5_PREFIX = re.compile(r"socks5://[^\s]+")
+
     @classmethod
     def extract_http_proxies(cls, text: str) -> List[Tuple[str, str]]:
         result = []
@@ -57,6 +73,22 @@ class ProxyPatterns:
     @classmethod
     def extract_ss_urls(cls, text: str) -> List[str]:
         return cls.SS_URL.findall(text)
+
+    @classmethod
+    def is_socks4(cls, url: str) -> bool:
+        return bool(cls.SOCKS4_PREFIX.match(url))
+
+    @classmethod
+    def extract_socks4_urls(cls, text: str) -> List[str]:
+        return cls.SOCKS4_PREFIX.findall(text)
+
+    @classmethod
+    def is_socks5(cls, url: str) -> bool:
+        return bool(cls.SOCKS5_PREFIX.match(url))
+
+    @classmethod
+    def extract_socks5_urls(cls, text: str) -> List[str]:
+        return cls.SOCKS5_PREFIX.findall(text)
 
     @classmethod
     def is_valid_ip(cls, ip: str) -> bool:

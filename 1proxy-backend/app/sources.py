@@ -9,8 +9,29 @@ class SourceRegistry:
     """
 
     SOURCES: List[SourceConfig] = [
+        # HTTP/HTTPS Proxy Sources
         SourceConfig(
-            url="https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt",
+            url="https://raw.githubusercontent.com/proxifly/free-proxy-list/refs/heads/main/proxies/all/data.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/TheSpeedX/PROXY-List/refs/heads/master/http.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/TheSpeedX/PROXY-List/refs/heads/master/socks4.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/TheSpeedX/PROXY-List/refs/heads/master/socks5.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/dpangestuw/Free-Proxy/refs/heads/main/allive.txt",
             type=SourceType.GITHUB_RAW,
             enabled=True,
         ),
@@ -32,37 +53,6 @@ class SourceRegistry:
         SourceConfig(
             url="https://raw.githubusercontent.com/mmpx12/proxy-list/master/https.txt",
             type=SourceType.GITHUB_RAW,
-            enabled=True,
-        ),
-        # V2Ray / VMess / VLESS / Trojan / Shadowsocks Sources
-        SourceConfig(
-            url="https://raw.githubusercontent.com/vorz1k/v2box/main/supreme_vpns_1.txt",
-            type=SourceType.SUBSCRIPTION_BASE64,
-            enabled=True,
-        ),
-        SourceConfig(
-            url="https://raw.githubusercontent.com/Sage-77/V2ray-configs/main/vmess.txt",
-            type=SourceType.SUBSCRIPTION_BASE64,
-            enabled=True,
-        ),
-        SourceConfig(
-            url="https://raw.githubusercontent.com/Sage-77/V2ray-configs/main/vless.txt",
-            type=SourceType.SUBSCRIPTION_BASE64,
-            enabled=True,
-        ),
-        SourceConfig(
-            url="https://raw.githubusercontent.com/Sage-77/V2ray-configs/main/trojan.txt",
-            type=SourceType.SUBSCRIPTION_BASE64,
-            enabled=True,
-        ),
-        SourceConfig(
-            url="https://raw.githubusercontent.com/Sage-77/V2ray-configs/main/ss.txt",
-            type=SourceType.SUBSCRIPTION_BASE64,
-            enabled=True,
-        ),
-        SourceConfig(
-            url="https://raw.githubusercontent.com/Sage-77/V2ray-configs/main/config.txt",
-            type=SourceType.SUBSCRIPTION_BASE64,
             enabled=True,
         ),
         SourceConfig(
@@ -98,6 +88,63 @@ class SourceRegistry:
         SourceConfig(
             url="https://raw.githubusercontent.com/zloi-user/hideip.me/main/http.txt",
             type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        # V2Ray / VMess / VLESS / Trojan / Shadowsocks Sources
+        SourceConfig(
+            url="https://raw.githubusercontent.com/vorz1k/v2box/main/supreme_vpns_1.txt",
+            type=SourceType.SUBSCRIPTION_BASE64,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/Sage-77/V2ray-configs/main/vmess.txt",
+            type=SourceType.SUBSCRIPTION_BASE64,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/Sage-77/V2ray-configs/main/vless.txt",
+            type=SourceType.SUBSCRIPTION_BASE64,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/Sage-77/V2ray-configs/main/trojan.txt",
+            type=SourceType.SUBSCRIPTION_BASE64,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/Sage-77/V2ray-configs/main/ss.txt",
+            type=SourceType.SUBSCRIPTION_BASE64,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/Sage-77/V2ray-configs/main/config.txt",
+            type=SourceType.SUBSCRIPTION_BASE64,
+            enabled=True,
+        ),
+        # Additional GitHub repositories (multi-protocol)
+        SourceConfig(
+            url="https://github.com/SoliSpirit/proxy-list",
+            type=SourceType.GENERIC_TEXT,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://github.com/zloi-user/hideip.me",
+            type=SourceType.GENERIC_TEXT,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://github.com/ClearProxy/checked-proxy-list",
+            type=SourceType.GENERIC_TEXT,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://github.com/stormsia/proxy-list",
+            type=SourceType.GENERIC_TEXT,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://github.com/databay-labs/free-proxy-list",
+            type=SourceType.GENERIC_TEXT,
             enabled=True,
         ),
     ]

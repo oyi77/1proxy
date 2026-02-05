@@ -2,8 +2,9 @@ import asyncio
 from datetime import datetime, timedelta
 from app.database import AsyncSessionLocal, get_db
 from app.db_storage import db_storage
-from app.grabber import GitHubGrabber
+from app.grabber import GitHubGrabber, WebGrabber
 from app.sources import SourceRegistry
+from app.models import SourceType
 import logging
 
 logger = logging.getLogger(__name__)
@@ -24,18 +25,23 @@ async def background_scraper_worker(interval_minutes: int = 10):
                 if not sources_db:
                     logger.warning("⚠️  No enabled sources found")
                 else:
-                    grabber = GitHubGrabber()
                     total_scraped = 0
                     total_added = 0
 
                     for source_db in sources_db:
                         try:
-                            from app.models import SourceConfig, SourceType
-
                             # Create SourceConfig from database source
+                            from app.models import SourceConfig
+
                             source = SourceConfig(
                                 url=source_db.url, type=SourceType(source_db.type)
                             )
+
+                            # Select appropriate grabber based on source type
+                            if source.type == SourceType.GENERIC_TEXT:
+                                grabber = WebGrabber()
+                            else:
+                                grabber = GitHubGrabber()
 
                             proxies = await grabber.extract_proxies(source)
 

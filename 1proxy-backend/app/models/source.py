@@ -12,7 +12,9 @@ class SourceType(str, Enum):
 class SourceConfig(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
-    url: HttpUrl
+    url: (
+        str  # Changed from HttpUrl to str for more flexibility with various URL formats
+    )
     type: SourceType
     enabled: bool = True
     selector: Optional[str] = None
