@@ -25,4 +25,4 @@ ENV PYTHONPATH=/app
 
 # Run the application
 # We use python -m uvicorn to ensure app is in the path
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["sh", "-c", "alembic upgrade head && python -m uvicorn app.main:app --host 0.0.0.0 --port 8080"]
