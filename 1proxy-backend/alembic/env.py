@@ -1,5 +1,6 @@
 from logging.config import fileConfig
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from sqlalchemy import engine_from_config
@@ -14,12 +15,16 @@ sys.path.append(str(Path(__file__).parent.parent))
 from app.database import Base, DATABASE_URL
 from app.db_models import User, ProxySource, Proxy, ValidationHistory
 
+
 def get_url():
     url = DATABASE_URL
     # Override if using async driver for Alembic (which is sync)
     if "postgresql+asyncpg" in url:
         url = url.replace("postgresql+asyncpg", "postgresql")
+    if "sqlite+aiosqlite" in url:
+        url = url.replace("sqlite+aiosqlite", "sqlite")
     return url
+
 
 config = context.config
 
