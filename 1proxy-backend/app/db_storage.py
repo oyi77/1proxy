@@ -191,21 +191,30 @@ class DatabaseStorage:
 
                 for proxy_dict in batch:
                     try:
-                        result = await session.execute(
-                            select(Proxy).where(Proxy.url == proxy_dict["url"])
-                        )
-                        existing = result.scalar_one_or_none()
+                        added_new = False
+                        async with session.begin_nested():
+                            # Avoid autoflush of previous pending objects during our lookup.
+                            with session.no_autoflush:
+                                result = await session.execute(
+                                    select(Proxy).where(Proxy.url == proxy_dict["url"])
+                                )
+                                existing = result.scalar_one_or_none()
 
-                        if existing:
-                            existing.last_seen = now
-                            existing.updated_at = now
-                            # Give failed proxies another chance if seen again by scraper
-                            if existing.validation_status == "failed":
-                                existing.validation_status = "pending"
-                                # We don't set is_working=True yet, keep it False until validated
-                        else:
-                            proxy = Proxy(**proxy_dict)
-                            session.add(proxy)
+                            if existing:
+                                existing.last_seen = now
+                                existing.updated_at = now
+                                # Give failed proxies another chance if seen again by scraper
+                                if existing.validation_status == "failed":
+                                    existing.validation_status = "pending"
+                                    # We don't set is_working=True yet, keep it False until validated
+                                await session.flush([existing])
+                            else:
+                                proxy = Proxy(**proxy_dict)
+                                session.add(proxy)
+                                await session.flush([proxy])
+                                added_new = True
+
+                        if added_new:
                             total_inserted += 1
 
                     except Exception as e:
@@ -239,19 +248,29 @@ class DatabaseStorage:
                 if not url:
                     continue
 
-                # Check if exists
-                result = await session.execute(select(Proxy).where(Proxy.url == url))
-                existing = result.scalar_one_or_none()
+                added_new = False
+                async with session.begin_nested():
+                    # Avoid autoflush of previous pending objects during our lookup.
+                    with session.no_autoflush:
+                        result = await session.execute(
+                            select(Proxy).where(Proxy.url == url)
+                        )
+                        existing = result.scalar_one_or_none()
 
-                if existing:
-                    existing.last_seen = now
-                    existing.updated_at = now
-                    # Give failed proxies another chance if seen again by scraper
-                    if existing.validation_status == "failed":
-                        existing.validation_status = "pending"
-                else:
-                    proxy = Proxy(**proxy_data)
-                    session.add(proxy)
+                    if existing:
+                        existing.last_seen = now
+                        existing.updated_at = now
+                        # Give failed proxies another chance if seen again by scraper
+                        if existing.validation_status == "failed":
+                            existing.validation_status = "pending"
+                        await session.flush([existing])
+                    else:
+                        proxy = Proxy(**proxy_data)
+                        session.add(proxy)
+                        await session.flush([proxy])
+                        added_new = True
+
+                if added_new:
                     added_count += 1
 
             except Exception as e:
