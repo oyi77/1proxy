@@ -593,6 +593,7 @@ async def rotate_proxy(
 @router.post("/proxies/rotate/session")
 @limiter.limit("30/minute")
 async def create_rotation_session(
+    request: Request,
     session_config: RotationSessionCreate,
 ):
     """
