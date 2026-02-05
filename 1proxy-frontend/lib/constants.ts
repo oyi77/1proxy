@@ -1,5 +1,6 @@
-// The subdirectory where the app is deployed on GitHub Pages
-export const BASE_PATH = "/1proxy";
+// The subdirectory where the app is deployed (GitHub Pages uses /1proxy).
+// For local / Docker standalone runtime, this should be empty.
+export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "/1proxy";
 
 // The production backend API URL (Railway)
 export const API_URL = "https://helpful-alignment-production-2ae5.up.railway.app";

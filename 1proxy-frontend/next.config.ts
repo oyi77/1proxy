@@ -1,12 +1,17 @@
 import type { NextConfig } from "next";
 
+const nextOutput = process.env.NEXT_OUTPUT;
+const isStandalone = nextOutput === "standalone";
+
+const basePath = isStandalone
+  ? process.env.NEXT_PUBLIC_BASE_PATH ?? ""
+  : process.env.NEXT_PUBLIC_BASE_PATH ?? "/1proxy";
+
 const nextConfig: NextConfig = {
-  // Static export for GitHub Pages deployment
-  output: 'export',
-  
-  // BasePath is mandatory for the Next.js runtime to handle subdirectories correctly
-  // This affects internal routing, chunk loading, and React Server Component fetches
-  basePath: '/1proxy',
+  // GitHub Pages uses static export under /1proxy.
+  // Docker/local runtime uses standalone output at /.
+  output: isStandalone ? "standalone" : "export",
+  basePath,
   
   // Disable image optimization for static export
   images: {
