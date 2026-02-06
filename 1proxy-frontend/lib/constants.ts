@@ -4,6 +4,9 @@
 // - GitHub Pages standalone: empty (basePath already configured in next.config.js)
 export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
+// The production backend API URL (Railway)
+export const API_URL = "https://helpful-alignment-production-2ae5.up.railway.app";
+
 /**
  * Ensures a path is correctly prefixed with BASE_PATH.
  * Only prepends BASE_PATH if it's not already present.
