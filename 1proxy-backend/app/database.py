@@ -30,6 +30,9 @@ if DATABASE_URL.startswith("postgresql"):
             "pool_pre_ping": True,  # Verify connections before using
             "pool_recycle": 3600,  # Recycle connections after 1 hour
             "pool_timeout": 30,  # Wait max 30s for connection from pool
+            "connect_args": {
+                "statement_cache_size": 0  # Disable prepared statements for PgBouncer compatibility
+            },
         }
     )
 
