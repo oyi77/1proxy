@@ -16,6 +16,7 @@ export interface Proxy {
   anonymity?: string;
   quality_score?: number;
   is_working: boolean;
+  validation_status?: string;
   last_validated?: string;
   source?: string;
 }
@@ -191,13 +192,15 @@ export const api = {
     protocol?: string;
     limit?: number;
     offset?: number;
+    validation_status?: string;
   }): Promise<ProxiesResponse> {
     const query = new URLSearchParams();
     if (params?.protocol) query.set("protocol", params.protocol);
     if (params?.limit) query.set("limit", params.limit.toString());
     if (params?.offset) query.set("offset", params.offset.toString());
+    if (params?.validation_status) query.set("validation_status", params.validation_status);
 
-    const res = await fetch(`${API_BASE}/api/v1/proxies?${query}`);
+    const res = await fetch(`${API_BASE}/api/v1/proxies/advanced?${query}`);
     if (!res.ok) throw new Error("Failed to fetch proxies");
     return res.json();
   },

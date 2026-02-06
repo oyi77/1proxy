@@ -380,19 +380,20 @@ class DatabaseStorage:
         anonymity: Optional[str] = None,
         min_quality: Optional[int] = None,
         is_working: bool = True,
-        validation_status: str = "validated",
+        validation_status: Optional[str] = None,
         limit: int = 100,
         offset: int = 0,
         order_by: str = "quality_score",
     ) -> tuple[List[Proxy], int]:
         # Use selectinload to prevent N+1 query problem when accessing proxy.source
+        conditions = [Proxy.is_working == is_working]
+
+        # If validation_status is provided, filter by it; otherwise return all statuses
+        if validation_status:
+            conditions.append(Proxy.validation_status == validation_status)
+
         query = (
-            select(Proxy)
-            .options(selectinload(Proxy.source))
-            .where(
-                Proxy.is_working == is_working,
-                Proxy.validation_status == validation_status,
-            )
+            select(Proxy).options(selectinload(Proxy.source)).where(and_(*conditions))
         )
 
         if protocol:

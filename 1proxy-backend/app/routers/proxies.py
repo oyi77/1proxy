@@ -36,6 +36,7 @@ class ProxyResponse(BaseModel):
     can_access_google: Optional[bool]
     quality_score: Optional[int]
     is_working: bool
+    validation_status: Optional[str]
     last_validated: Optional[str]
 
     class Config:
@@ -71,6 +72,10 @@ async def get_proxies_advanced(
     min_speed: Optional[float] = Query(None, ge=0, description="Minimum speed in Mbps"),
     max_latency: Optional[int] = Query(None, ge=0, description="Maximum latency in ms"),
     is_working: bool = Query(True, description="Show only working proxies"),
+    validation_status: Optional[str] = Query(
+        None,
+        description="Filter by validation status (pending, validating, validated, failed)",
+    ),
     order_by: str = Query(
         "quality_score",
         description="Sort by: quality_score, latency_ms, speed_mbps, created_at",
@@ -87,6 +92,7 @@ async def get_proxies_advanced(
         anonymity=anonymity,
         min_quality=min_quality,
         is_working=is_working,
+        validation_status=validation_status,
         limit=limit,
         offset=offset,
         order_by=order_by,

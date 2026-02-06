@@ -23,6 +23,7 @@ export function HomeClient() {
   const [loading, setLoading] = useState(true);
   const [tableLoading, setTableLoading] = useState(false);
   const [filter, setFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("validated");
   const [currentPage, setCurrentPage] = useState(0);
   const limit = 15;
 
@@ -48,6 +49,7 @@ export function HomeClient() {
         protocol: filter || undefined,
         limit,
         offset: currentPage * limit,
+        validation_status: statusFilter === "all" ? undefined : statusFilter,
       });
       setProxies(data.proxies);
       setTotalProxies(data.total);
@@ -79,7 +81,7 @@ export function HomeClient() {
     loadStats();
     loadProxies();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, currentPage]);
+  }, [filter, statusFilter, currentPage]);
 
   if (loading && !stats) {
     return (
@@ -294,6 +296,11 @@ export function HomeClient() {
               filter={filter}
               onFilterChange={(newFilter) => {
                 setFilter(newFilter);
+                setCurrentPage(0);
+              }}
+              statusFilter={statusFilter}
+              onStatusFilterChange={(newStatus) => {
+                setStatusFilter(newStatus);
                 setCurrentPage(0);
               }}
               theme={theme}
