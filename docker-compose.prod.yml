@@ -38,6 +38,7 @@ services:
       dockerfile: Dockerfile
       args:
         - NEXT_PUBLIC_API_URL=${API_URL:-http://localhost:8000}
+        # Don't set NEXT_PUBLIC_BASE_PATH here - let Dockerfile default to '' for standalone
     restart: always
     ports:
       - "3000:3000"
