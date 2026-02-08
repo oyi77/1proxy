@@ -25,6 +25,8 @@ class Settings(BaseSettings):
         else "http://localhost:8000"
     )
     FRONTEND_URL: str = os.getenv("SPACE_HOST", "http://localhost:3000")
+    # Optional base path when frontend is hosted under a subpath (e.g. GitHub Pages)
+    FRONTEND_BASE_PATH: str = os.getenv("FRONTEND_BASE_PATH", "")
 
     # OAuth
     GITHUB_CLIENT_ID: str = ""
