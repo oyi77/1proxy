@@ -31,6 +31,14 @@ async def scrape_enabled_sources_once(session) -> dict:
 
             source = SourceConfig(url=source_db.url, type=SourceType(source_db.type))
 
+            # GENERIC_TEXT sources may require HTML parsing and link crawling
+            # which can be memory-expensive in constrained environments.
+            if source.type == SourceType.GENERIC_TEXT:
+                logger.info(
+                    f"⏭️  Skipping generic source in background scraper: {source_db.url}"
+                )
+                continue
+
             if source.type == SourceType.GENERIC_TEXT:
                 grabber = WebGrabber()
             else:
@@ -76,6 +84,17 @@ async def scrape_enabled_sources_once(session) -> dict:
             source_db.validated = False
             source_db.validation_error = str(e)
             logger.warning(f"⚠️  Disabling source {source_db.url}: {e}")
+
+        except ValueError as e:
+            # Common case: oversized source content; disable to prevent repeated
+            # memory pressure / OOM kills.
+            if "too large" in str(e).lower():
+                source_db.enabled = False
+                source_db.validated = False
+                source_db.validation_error = str(e)
+                logger.warning(f"⚠️  Disabling source {source_db.url}: {e}")
+            else:
+                logger.error(f"❌ Failed to scrape {source_db.url}: {e}")
 
         except Exception as e:
             logger.error(f"❌ Failed to scrape {source_db.url}: {e}")
