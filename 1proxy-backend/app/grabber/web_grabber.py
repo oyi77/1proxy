@@ -2,6 +2,7 @@ import aiohttp
 import asyncio
 import re
 from bs4 import BeautifulSoup
+import os
 from typing import List
 from app.grabber.base import BaseGrabber
 from app.models.source import SourceConfig
@@ -52,6 +53,7 @@ class WebGrabber(BaseGrabber):
 
     async def _fetch_raw_url(self, url: str) -> str:
         """Fetch raw content from URL"""
+        max_bytes = int(os.getenv("SOURCE_MAX_BYTES", "5000000"))
         for attempt in range(self.max_retries):
             try:
                 async with aiohttp.ClientSession() as session:
@@ -59,7 +61,22 @@ class WebGrabber(BaseGrabber):
                         url, timeout=aiohttp.ClientTimeout(total=self.timeout)
                     ) as response:
                         if response.status == 200:
-                            return await response.text()
+                            content_length = response.content_length
+                            if (
+                                content_length is not None
+                                and content_length > max_bytes
+                            ):
+                                raise ValueError(
+                                    f"Source content too large (> {max_bytes} bytes)"
+                                )
+
+                            raw = await response.content.read(max_bytes + 1)
+                            if len(raw) > max_bytes:
+                                raise ValueError(
+                                    f"Source content too large (> {max_bytes} bytes)"
+                                )
+
+                            return raw.decode("utf-8", errors="replace")
                         elif response.status == 404:
                             raise FileNotFoundError(f"URL not found: {url}")
                         else:
