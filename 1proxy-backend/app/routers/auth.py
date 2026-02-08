@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from typing import Optional
 import os
+from urllib.parse import urlencode, urlparse, urlunparse
 
 from app.database import get_db
 from app.oauth import oauth_handler
@@ -19,6 +20,44 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 limiter = Limiter(key_func=get_remote_address)
+
+
+def _build_frontend_url(
+    path: str, query_params: Optional[dict[str, str]] = None
+) -> str:
+    """Build a frontend URL that preserves an optional basePath.
+
+    GitHub Pages and some reverse proxies host the frontend under a subpath
+    (e.g. https://domain.tld/1proxy). In those cases, redirect targets must
+    include that prefix.
+    """
+
+    base = str(settings.FRONTEND_URL)
+    base_path = str(getattr(settings, "FRONTEND_BASE_PATH", ""))
+
+    parsed = urlparse(base)
+
+    base_parts = [p for p in parsed.path.strip("/").split("/") if p]
+    base_path_parts = [p for p in base_path.strip("/").split("/") if p]
+
+    # Avoid duplicating the base path if FRONTEND_URL already includes it.
+    if base_path_parts and base_parts[-len(base_path_parts) :] == base_path_parts:
+        base_path_parts = []
+
+    target_parts = [p for p in path.strip("/").split("/") if p]
+    full_path = "/" + "/".join([*base_parts, *base_path_parts, *target_parts])
+
+    query = urlencode(query_params or {})
+    return urlunparse(
+        (
+            parsed.scheme,
+            parsed.netloc,
+            full_path,
+            "",
+            query,
+            "",
+        )
+    )
 
 
 class UserInfo(BaseModel):
@@ -72,20 +111,22 @@ async def github_callback(
             session, user_id=user.id, action="login", resource_type="github"
         )
 
-        response = RedirectResponse(url=f"{settings.FRONTEND_URL}/dashboard")
+        response = RedirectResponse(url=_build_frontend_url("/dashboard"))
+        secure_cookie = bool(str(settings.FRONTEND_URL).startswith("https"))
+        samesite = "none" if secure_cookie else "lax"
         response.set_cookie(
             key="access_token",
             value=token,
             httponly=True,
-            secure=True if settings.FRONTEND_URL.startswith("https") else False,
-            samesite="lax",
+            secure=secure_cookie,
+            samesite=samesite,
             max_age=60 * 60 * 24 * 7,
         )
 
         return response
 
     except Exception as e:
-        return RedirectResponse(url=f"{settings.FRONTEND_URL}/login?error={str(e)}")
+        return RedirectResponse(url=_build_frontend_url("/login", {"error": str(e)}))
 
 
 @router.get("/google")
@@ -118,20 +159,22 @@ async def google_callback(
             session, user_id=user.id, action="login", resource_type="google"
         )
 
-        response = RedirectResponse(url=f"{settings.FRONTEND_URL}/dashboard")
+        response = RedirectResponse(url=_build_frontend_url("/dashboard"))
+        secure_cookie = bool(str(settings.FRONTEND_URL).startswith("https"))
+        samesite = "none" if secure_cookie else "lax"
         response.set_cookie(
             key="access_token",
             value=token,
             httponly=True,
-            secure=True if settings.FRONTEND_URL.startswith("https") else False,
-            samesite="lax",
+            secure=secure_cookie,
+            samesite=samesite,
             max_age=60 * 60 * 24 * 7,
         )
 
         return response
 
     except Exception as e:
-        return RedirectResponse(url=f"{settings.FRONTEND_URL}/login?error={str(e)}")
+        return RedirectResponse(url=_build_frontend_url("/login", {"error": str(e)}))
 
 
 @router.post("/logout")
