@@ -9,7 +9,12 @@ import asyncio
 import time
 import logging
 
-from app.grabber.scraping_utils import ProxyAgent
+from app.grabber.scraping_utils import (
+    ProxyAgent,
+    ProxyRotator,
+    RequestQueue,
+    RateLimiter,
+)
 
 
 class ScrapingEnhancementConfig:
@@ -43,9 +48,9 @@ class EnhancedScrapingService:
         self.performance_monitor = PerformanceMonitor()
         self.logger = logging.getLogger(__name__)
 
-        from app.grabber.scraping_config import ScrapingConfigManager
+        from app.grabber.scraping_config import ScrapingSettingsManager
 
-        self.config_manager = ScrapingConfigManager()
+        self.config_manager = ScrapingSettingsManager()
 
     async def initialize_services(self):
         """Initialize async components of the service."""
