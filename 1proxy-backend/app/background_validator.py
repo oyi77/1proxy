@@ -10,6 +10,90 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+async def scrape_enabled_sources_once(session) -> dict:
+    """Scrape all currently-enabled sources once.
+
+    Intended for reuse by the background worker and for unit testing.
+    """
+
+    sources_db = await db_storage.get_sources(session, enabled_only=True)
+
+    if not sources_db:
+        logger.warning("⚠️  No enabled sources found")
+        return {"total_scraped": 0, "total_added": 0, "sources": 0}
+
+    total_scraped = 0
+    total_added = 0
+
+    for source_db in sources_db:
+        try:
+            from app.models import SourceConfig
+
+            source = SourceConfig(url=source_db.url, type=SourceType(source_db.type))
+
+            if source.type == SourceType.GENERIC_TEXT:
+                grabber = WebGrabber()
+            else:
+                grabber = GitHubGrabber()
+
+            proxies = await grabber.extract_proxies(source)
+
+            proxies_data = []
+            for p in proxies:
+                data = p.model_dump() if hasattr(p, "model_dump") else p.__dict__
+                proxies_data.append(
+                    {
+                        "url": f"{data.get('protocol', 'http')}://{data.get('ip')}:{data.get('port')}",
+                        "protocol": data.get("protocol", "http"),
+                        "ip": data.get("ip"),
+                        "port": data.get("port"),
+                        "country_code": data.get("country_code"),
+                        "country_name": data.get("country_name"),
+                        "city": data.get("city"),
+                        "latency_ms": data.get("latency_ms"),
+                        "speed_mbps": data.get("speed_mbps"),
+                        "anonymity": data.get("anonymity"),
+                        "proxy_type": data.get("proxy_type"),
+                        "source_id": source_db.id,
+                    }
+                )
+
+            added = await db_storage.add_proxies(session, proxies_data)
+            total_scraped += len(proxies)
+            total_added += added
+
+            source_db.total_scraped = (source_db.total_scraped or 0) + len(proxies)
+            source_db.last_scraped = datetime.utcnow()
+
+            logger.info(
+                f"✅ Scraped {len(proxies)} proxies from {source_db.name} (added {added} new)"
+            )
+
+        except FileNotFoundError as e:
+            # A 404 raw URL is effectively a dead source: disable it to prevent
+            # endless retries/log spam in constrained deployment environments.
+            source_db.enabled = False
+            source_db.validated = False
+            source_db.validation_error = str(e)
+            logger.warning(f"⚠️  Disabling source {source_db.url}: {e}")
+
+        except Exception as e:
+            logger.error(f"❌ Failed to scrape {source_db.url}: {e}")
+            continue
+
+    await session.commit()
+
+    logger.info(
+        f"✅ Auto-scraping complete: {total_scraped} scraped, {total_added} new proxies added"
+    )
+
+    return {
+        "total_scraped": total_scraped,
+        "total_added": total_added,
+        "sources": len(sources_db),
+    }
+
+
 async def background_scraper_worker(interval_minutes: int = 10):
     """Automatically scrape all enabled sources periodically"""
 
@@ -19,78 +103,7 @@ async def background_scraper_worker(interval_minutes: int = 10):
     while True:
         try:
             async with AsyncSessionLocal() as session:
-                # Get all enabled sources from database
-                sources_db = await db_storage.get_sources(session, enabled_only=True)
-
-                if not sources_db:
-                    logger.warning("⚠️  No enabled sources found")
-                else:
-                    total_scraped = 0
-                    total_added = 0
-
-                    for source_db in sources_db:
-                        try:
-                            # Create SourceConfig from database source
-                            from app.models import SourceConfig
-
-                            source = SourceConfig(
-                                url=source_db.url, type=SourceType(source_db.type)
-                            )
-
-                            # Select appropriate grabber based on source type
-                            if source.type == SourceType.GENERIC_TEXT:
-                                grabber = WebGrabber()
-                            else:
-                                grabber = GitHubGrabber()
-
-                            proxies = await grabber.extract_proxies(source)
-
-                            proxies_data = []
-                            for p in proxies:
-                                data = (
-                                    p.model_dump()
-                                    if hasattr(p, "model_dump")
-                                    else p.__dict__
-                                )
-                                proxies_data.append(
-                                    {
-                                        "url": f"{data.get('protocol', 'http')}://{data.get('ip')}:{data.get('port')}",
-                                        "protocol": data.get("protocol", "http"),
-                                        "ip": data.get("ip"),
-                                        "port": data.get("port"),
-                                        "country_code": data.get("country_code"),
-                                        "country_name": data.get("country_name"),
-                                        "city": data.get("city"),
-                                        "latency_ms": data.get("latency_ms"),
-                                        "speed_mbps": data.get("speed_mbps"),
-                                        "anonymity": data.get("anonymity"),
-                                        "proxy_type": data.get("proxy_type"),
-                                        "source_id": source_db.id,
-                                    }
-                                )
-
-                            added = await db_storage.add_proxies(session, proxies_data)
-                            total_scraped += len(proxies)
-                            total_added += added
-
-                            # Update source stats
-                            source_db.total_scraped = (
-                                source_db.total_scraped or 0
-                            ) + len(proxies)
-                            source_db.last_scraped = datetime.utcnow()
-
-                            logger.info(
-                                f"✅ Scraped {len(proxies)} proxies from {source_db.name} (added {added} new)"
-                            )
-
-                        except Exception as e:
-                            logger.error(f"❌ Failed to scrape {source_db.url}: {e}")
-                            continue
-
-                    await session.commit()
-                    logger.info(
-                        f"✅ Auto-scraping complete: {total_scraped} scraped, {total_added} new proxies added"
-                    )
+                await scrape_enabled_sources_once(session)
 
             await asyncio.sleep(interval_minutes * 60)
 
