@@ -2,6 +2,13 @@ import { API_URL } from "./constants";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || API_URL;
 
+const apiFetch = async (url: string, init: RequestInit = {}) => {
+  return fetch(url, {
+    ...init,
+    credentials: 'include',
+  });
+};
+
 export interface Proxy {
   id: number;
   url: string;
@@ -183,7 +190,7 @@ export interface AdvancedScrapingConfig {
 
 export const api = {
   async getStats(): Promise<Stats> {
-    const res = await fetch(`${API_BASE}/api/v1/stats`);
+    const res = await apiFetch(`${API_BASE}/api/v1/stats`);
     if (!res.ok) throw new Error("Failed to fetch stats");
     return res.json();
   },
@@ -200,7 +207,7 @@ export const api = {
     if (params?.offset) query.set("offset", params.offset.toString());
     if (params?.validation_status) query.set("validation_status", params.validation_status);
 
-    const res = await fetch(`${API_BASE}/api/v1/proxies/advanced?${query}`);
+    const res = await apiFetch(`${API_BASE}/api/v1/proxies/advanced?${query}`);
     if (!res.ok) throw new Error("Failed to fetch proxies");
     return res.json();
   },
@@ -208,13 +215,13 @@ export const api = {
   async getRandomProxy(exclude?: string[]): Promise<Proxy> {
     const query = new URLSearchParams();
     if (exclude && exclude.length > 0) query.set("exclude", exclude.join(","));
-    const res = await fetch(`${API_BASE}/api/v1/proxies/random?${query}`);
+    const res = await apiFetch(`${API_BASE}/api/v1/proxies/random?${query}`);
     if (!res.ok) throw new Error("Failed to fetch random proxy");
     return res.json();
   },
 
   async deleteProxy(id: number): Promise<void> {
-    const res = await fetch(`${API_BASE}/api/v1/proxies/${id}`, {
+    const res = await apiFetch(`${API_BASE}/api/v1/proxies/${id}`, {
       method: "DELETE",
     });
     if (!res.ok) throw new Error("Failed to delete proxy");
@@ -228,19 +235,19 @@ export const api = {
     total_stored: number;
     sample: Proxy[];
   }> {
-    const res = await fetch(`${API_BASE}/api/v1/proxies/demo`);
+    const res = await apiFetch(`${API_BASE}/api/v1/proxies/demo`);
     if (!res.ok) throw new Error("Failed to scrape demo");
     return res.json();
   },
 
   async getSources(): Promise<SourcesResponse> {
-    const res = await fetch(`${API_BASE}/api/v1/sources`);
+    const res = await apiFetch(`${API_BASE}/api/v1/sources`);
     if (!res.ok) throw new Error("Failed to fetch sources");
     return res.json();
   },
 
   async scrapeAllSources(): Promise<ScrapeAllResponse> {
-    const res = await fetch(`${API_BASE}/api/v1/proxies/scrape-all`, {
+    const res = await apiFetch(`${API_BASE}/api/v1/proxies/scrape-all`, {
       method: "POST",
     });
     if (!res.ok) throw new Error("Failed to scrape all sources");
@@ -251,13 +258,13 @@ export const api = {
     const query = new URLSearchParams();
     if (params?.limit) query.set("limit", params.limit.toString());
     if (params?.offset) query.set("offset", params.offset.toString());
-    const res = await fetch(`${API_BASE}/api/v1/admin/users?${query}`);
+    const res = await apiFetch(`${API_BASE}/api/v1/admin/users?${query}`);
     if (!res.ok) throw new Error("Failed to fetch admin users");
     return res.json();
   },
 
   async triggerValidation(sourceId: number): Promise<{ message: string }> {
-    const res = await fetch(`${API_BASE}/api/v1/validation/trigger`, {
+    const res = await apiFetch(`${API_BASE}/api/v1/validation/trigger`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ source_id: sourceId }),
@@ -267,19 +274,19 @@ export const api = {
   },
 
   async getAdminValidationStats(): Promise<ValidationStats> {
-    const res = await fetch(`${API_BASE}/api/v1/admin/validation-stats`);
+    const res = await apiFetch(`${API_BASE}/api/v1/admin/validation-stats`);
     if (!res.ok) throw new Error("Failed to fetch validation stats");
     return res.json();
   },
 
   async getAdminQualityDistribution(): Promise<QualityDistribution> {
-    const res = await fetch(`${API_BASE}/api/v1/admin/quality-distribution`);
+    const res = await apiFetch(`${API_BASE}/api/v1/admin/quality-distribution`);
     if (!res.ok) throw new Error("Failed to fetch quality distribution");
     return res.json();
   },
 
   async getScrapingConfig(): Promise<ScrapingConfig> {
-    const res = await fetch(`${API_BASE}/api/v1/admin/scraping/scraping/config`);
+    const res = await apiFetch(`${API_BASE}/api/v1/admin/scraping/scraping/config`);
     if (!res.ok) throw new Error("Failed to fetch scraping config");
     return res.json();
   },
@@ -288,7 +295,7 @@ export const api = {
     moduleName: string,
     settings: Record<string, any>
   ): Promise<{ message: string; updated_config: Record<string, any> }> {
-    const res = await fetch(
+    const res = await apiFetch(
       `${API_BASE}/api/v1/admin/scraping/scraping/config/${moduleName}`,
       {
         method: "POST",
@@ -304,7 +311,7 @@ export const api = {
     module_name?: string;
     source_id?: number;
   }): Promise<{ session_id: string; message: string }> {
-    const res = await fetch(
+    const res = await apiFetch(
       `${API_BASE}/api/v1/admin/scraping/scraping/start-session`,
       {
         method: "POST",
@@ -317,7 +324,7 @@ export const api = {
   },
 
   async getScrapingSession(sessionId: string): Promise<ScrapingSession> {
-    const res = await fetch(
+    const res = await apiFetch(
       `${API_BASE}/api/v1/admin/scraping/scraping/sessions/${sessionId}`
     );
     if (!res.ok) throw new Error("Failed to fetch scraping session");
@@ -327,7 +334,7 @@ export const api = {
   async stopScrapingSession(
     sessionId: string
   ): Promise<{ message: string; session: ScrapingSession }> {
-    const res = await fetch(
+    const res = await apiFetch(
       `${API_BASE}/api/v1/admin/scraping/scraping/sessions/${sessionId}/stop`,
       {
         method: "POST",
@@ -338,7 +345,7 @@ export const api = {
   },
 
   async getScrapingStats(): Promise<SessionStatsResponse> {
-    const res = await fetch(
+    const res = await apiFetch(
       `${API_BASE}/api/v1/admin/scraping/scraping/stats/overview`
     );
     if (!res.ok) throw new Error("Failed to fetch scraping stats");
@@ -346,7 +353,7 @@ export const api = {
   },
 
   async getProxySourceManagement(): Promise<ProxySourceManagement> {
-    const res = await fetch(
+    const res = await apiFetch(
       `${API_BASE}/api/v1/admin/scraping/scraping/proxy-sources`
     );
     if (!res.ok) throw new Error("Failed to fetch proxy source management");
@@ -359,7 +366,7 @@ export const api = {
     description?: string;
     type?: string;
   }): Promise<{ message: string; source_id: number }> {
-    const res = await fetch(
+    const res = await apiFetch(
       `${API_BASE}/api/v1/admin/scraping/scraping/proxy-sources`,
       {
         method: "POST",
@@ -380,7 +387,7 @@ export const api = {
       enabled?: boolean;
     }
   ): Promise<{ message: string }> {
-    const res = await fetch(
+    const res = await apiFetch(
       `${API_BASE}/api/v1/admin/scraping/scraping/proxy-sources/${sourceId}`,
       {
         method: "PUT",
@@ -393,7 +400,7 @@ export const api = {
   },
 
   async deleteProxySource(sourceId: number): Promise<{ message: string }> {
-    const res = await fetch(
+    const res = await apiFetch(
       `${API_BASE}/api/v1/admin/scraping/scraping/proxy-sources/${sourceId}`,
       {
         method: "DELETE",
@@ -406,7 +413,7 @@ export const api = {
   async validateProxySource(
     sourceId: number
   ): Promise<{ message: string; validation_result: Record<string, any> }> {
-    const res = await fetch(
+    const res = await apiFetch(
       `${API_BASE}/api/v1/admin/scraping/scraping/proxy-sources/${sourceId}/validate`,
       {
         method: "POST",
@@ -417,7 +424,7 @@ export const api = {
   },
 
   async getHunterStats(): Promise<HunterStats> {
-    const res = await fetch(
+    const res = await apiFetch(
       `${API_BASE}/api/v1/admin/scraping/scraping/hunter`
     );
     if (!res.ok) throw new Error("Failed to fetch hunter stats");
@@ -425,7 +432,7 @@ export const api = {
   },
 
   async triggerHunterDiscovery(): Promise<{ message: string; task_id: string }> {
-    const res = await fetch(
+    const res = await apiFetch(
       `${API_BASE}/api/v1/admin/scraping/scraping/hunter/trigger`,
       {
         method: "POST",
@@ -436,7 +443,7 @@ export const api = {
   },
 
   async getQueueStatus(): Promise<QueueStatus> {
-    const res = await fetch(
+    const res = await apiFetch(
       `${API_BASE}/api/v1/admin/scraping/scraping/queue`
     );
     if (!res.ok) throw new Error("Failed to fetch queue status");
@@ -444,7 +451,7 @@ export const api = {
   },
 
   async clearQueue(): Promise<{ message: string; cleared_count: number }> {
-    const res = await fetch(
+    const res = await apiFetch(
       `${API_BASE}/api/v1/admin/scraping/scraping/queue/clear`,
       {
         method: "POST",
@@ -455,7 +462,7 @@ export const api = {
   },
 
   async getAdvancedConfig(): Promise<AdvancedScrapingConfig> {
-    const res = await fetch(
+    const res = await apiFetch(
       `${API_BASE}/api/v1/admin/scraping/scraping/advanced-config`
     );
     if (!res.ok) throw new Error("Failed to fetch advanced config");
@@ -465,7 +472,7 @@ export const api = {
   async updateAdvancedConfig(
     config: AdvancedScrapingConfig
   ): Promise<{ message: string; config: AdvancedScrapingConfig }> {
-    const res = await fetch(
+    const res = await apiFetch(
       `${API_BASE}/api/v1/admin/scraping/scraping/advanced-config`,
       {
         method: "POST",
@@ -481,7 +488,7 @@ export const api = {
     operations: string[];
     descriptions: Record<string, string>;
   }> {
-    const res = await fetch(
+    const res = await apiFetch(
       `${API_BASE}/api/v1/admin/scraping/scraping/operations`
     );
     if (!res.ok) throw new Error("Failed to fetch scraping operations");
@@ -491,7 +498,7 @@ export const api = {
   async executeScrapingOperation(
     operation: string
   ): Promise<{ message: string; result: any }> {
-    const res = await fetch(
+    const res = await apiFetch(
       `${API_BASE}/api/v1/admin/scraping/scraping/operations/${operation}`,
       {
         method: "POST",
@@ -501,4 +508,3 @@ export const api = {
     return res.json();
   },
 };
-
