@@ -319,50 +319,54 @@ class DatabaseStorage:
             if not matching_result:
                 continue
 
-        if matching_result.success:
-            # We must use cast or ensure types for SQLAlchemy columns
-            proxy.latency_ms = (
-                int(matching_result.latency_ms)
-                if matching_result.latency_ms is not None
-                else None
-            )
-            proxy.anonymity = (
-                str(matching_result.anonymity) if matching_result.anonymity else None
-            )
-            proxy.can_access_google = bool(matching_result.can_access_google)
-            proxy.country_code = (
-                str(matching_result.country_code)
-                if matching_result.country_code
-                else None
-            )
-            proxy.country_name = (
-                str(matching_result.country_name)
-                if matching_result.country_name
-                else None
-            )
-            proxy.proxy_type = (
-                str(matching_result.proxy_type) if matching_result.proxy_type else None
-            )
-            # Update ISP/ORG if available
-            if hasattr(matching_result, "isp") and matching_result.isp:
-                proxy.isp = str(matching_result.isp)
-            if hasattr(matching_result, "org") and matching_result.org:
-                proxy.org = str(matching_result.org)
-            proxy.quality_score = (
-                int(matching_result.quality_score)
-                if matching_result.quality_score is not None
-                else None
-            )
-            proxy.is_working = True
-            proxy.validation_status = "validated"
-            proxy.last_validated = datetime.utcnow()
-            proxy.validation_failures = 0
-            validated_count += 1
-        else:
-            proxy.is_working = False
-            proxy.validation_status = "failed"
-            proxy.validation_failures = (proxy.validation_failures or 0) + 1
-            failed_count += 1
+            if matching_result.success:
+                # We must use cast or ensure types for SQLAlchemy columns
+                proxy.latency_ms = (
+                    int(matching_result.latency_ms)
+                    if matching_result.latency_ms is not None
+                    else None
+                )
+                proxy.anonymity = (
+                    str(matching_result.anonymity)
+                    if matching_result.anonymity
+                    else None
+                )
+                proxy.can_access_google = bool(matching_result.can_access_google)
+                proxy.country_code = (
+                    str(matching_result.country_code)
+                    if matching_result.country_code
+                    else None
+                )
+                proxy.country_name = (
+                    str(matching_result.country_name)
+                    if matching_result.country_name
+                    else None
+                )
+                proxy.proxy_type = (
+                    str(matching_result.proxy_type)
+                    if matching_result.proxy_type
+                    else None
+                )
+                # Update ISP/ORG if available
+                if hasattr(matching_result, "isp") and matching_result.isp:
+                    proxy.isp = str(matching_result.isp)
+                if hasattr(matching_result, "org") and matching_result.org:
+                    proxy.org = str(matching_result.org)
+                proxy.quality_score = (
+                    int(matching_result.quality_score)
+                    if matching_result.quality_score is not None
+                    else None
+                )
+                proxy.is_working = True
+                proxy.validation_status = "validated"
+                proxy.last_validated = datetime.utcnow()
+                proxy.validation_failures = 0
+                validated_count += 1
+            else:
+                proxy.is_working = False
+                proxy.validation_status = "failed"
+                proxy.validation_failures = (proxy.validation_failures or 0) + 1
+                failed_count += 1
 
         await session.commit()
 
