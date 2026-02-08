@@ -16,6 +16,7 @@ from fastapi import BackgroundTasks
 
 from app.database import get_db
 from app.dependencies import require_admin
+from app.db_storage import db_storage
 from app.db_storage_extended import extended_db_storage
 from app.db_models import ProxySource, User, ValidationHistory, ScrapingSession
 from app.grabber.scraping_enhancements import (
@@ -144,17 +145,21 @@ async def get_scraping_config() -> ScrapingConfigResponse:
 
     # Get global config
     global_config = service.config_manager.get_global_config()
+    if hasattr(global_config, "model_dump"):
+        global_config = global_config.model_dump()
 
     # Get module configs
     module_configs = {}
     for module_name in ["github_grabber", "subscription_grabber", "advanced_grabber"]:
-        module_configs[module_name] = service.config_manager.get_config(module_name)
+        module_configs[module_name] = await service.config_manager.get_config(
+            module_name
+        )
 
     # Get active sessions
-    global_sessions = {
-        session_id: session_data.session_id
-        for session_id, session_data in active_sessions.items()
-    }
+    global_sessions = [
+        {"session_id": session_id}
+        for session_id, _session_data in active_sessions.items()
+    ]
 
     # Get rate limiter status
     rate_limiter_status = service.config_manager.config.get("global", {})
@@ -244,7 +249,9 @@ async def start_scraping_session(
     # Dapatkan konfigurasi
     module_configs = {}
     for module_name in ["github_grabber", "subscription_grabber", "advanced_grabber"]:
-        module_configs[module_name] = service.config_manager.get_config(module_name)
+        module_configs[module_name] = await service.config_manager.get_config(
+            module_name
+        )
 
     # Validasi input
     source_config = request.get("source_config", {})
@@ -352,11 +359,10 @@ async def get_scraping_overview(db: AsyncSession = Depends(get_db)) -> Dict[str,
     pending_approval = hunter_stats.get("total_candidates", 0)
 
     total_sessions = 0
+    active_count = len(active_sessions)
 
     total_proxies = await db_storage.count_proxies(db)
-    validated_proxies = await db_storage.count_proxies(
-        db, validation_status="validated"
-    )
+    validated_proxies = (await db_storage.get_stats(db)).get("total_proxies", 0)
 
     return {
         "proxy_sources": {
@@ -366,8 +372,8 @@ async def get_scraping_overview(db: AsyncSession = Depends(get_db)) -> Dict[str,
         },
         "sessions": {
             "total": total_sessions,
-            "active": active_sessions,
-            "completed": total_sessions - active_sessions,
+            "active": active_count,
+            "completed": max(total_sessions - active_count, 0),
         },
         "validation": {
             "total_proxies": total_proxies,
