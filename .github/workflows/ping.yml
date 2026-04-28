@@ -1,0 +1,15 @@
+name: Ping
+
+on:
+  schedule:
+    - cron: '*/3 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Railway backend
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" https://helpful-alignment-production-2ae5.up.railway.app/health || true
+          curl -s -o /dev/null -w "%{http_code}" https://helpful-alignment-production-2ae5.up.railway.app/api/v1/proxies?limit=1 || true
