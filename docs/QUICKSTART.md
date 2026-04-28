@@ -78,11 +78,11 @@ curl http://localhost:8000/health
 
 ## 📊 Current Status
 
-✅ Backend: Running on port 8000  
-✅ Auto-scraper: Every 10 minutes  
-✅ Validation: Every 60 seconds  
-✅ Database: 18 sources, 1 user  
-✅ Caching: SQLite (ultra-fast)  
+✅ Backend: Running on port 8000
+✅ Auto-scraper: Every 10 minutes
+✅ Validation: Every 60 seconds
+✅ Database: 18 sources, 1 user
+✅ Caching: SQLite (ultra-fast)
 
 ## ⚠️ Note
 
