@@ -293,3 +293,39 @@ async def get_recent_validations(
             for p in proxies
         ]
     }
+@limiter.limit("5/minute")
+async def seed_sources(session: AsyncSession = Depends(get_db)):
+    """
+    Manually seed admin sources. Use if sources are empty.
+    """
+    from app.sources import SourceRegistry
+
+    admin_user = await session.execute(
+        select(User).where(User.role == "admin").limit(1)
+    )
+    admin = admin_user.scalar_one_or_none()
+
+    if not admin:
+        raise HTTPException(status_code=400, detail="No admin user found")
+
+    count = 0
+    for source_config in SourceRegistry.SOURCES:
+        existing = await session.execute(
+            select(ProxySource).where(ProxySource.url == str(source_config.url))
+        )
+        if not existing.scalar_one_or_none():
+            source = ProxySource(
+                user_id=admin.id,
+                url=str(source_config.url),
+                type=source_config.type.value if hasattr(source_config.type, "value") else str(source_config.type),
+                name=str(source_config.url).split("/")[-2],
+                enabled=source_config.enabled,
+                validated=True,
+                is_admin_source=True,
+                is_paid=False,
+            )
+            session.add(source)
+            count += 1
+
+    await session.commit()
+    return {"message": f"Seeded {count} sources"}
