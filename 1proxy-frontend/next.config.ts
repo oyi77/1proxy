@@ -22,10 +22,10 @@ const nextConfig: NextConfig = {
     tsconfigPath: './tsconfig.json',
   },
   
-  experimental: {
-    turbo: {
-      resolveExtensions: ['.web.tsx', '.web.ts', '.tsx', '.ts', '.web.js', '.js'],
-    },
+  outputFileTracingRoot: process.cwd(),
+
+  turbopack: {
+    resolveExtensions: ['.web.tsx', '.web.ts', '.tsx', '.ts', '.web.js', '.js'],
   },
 };
 

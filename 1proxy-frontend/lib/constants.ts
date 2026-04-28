@@ -1,11 +1,13 @@
 // The subdirectory where the app is deployed.
 // - GitHub Pages with static export: set NEXT_PUBLIC_BASE_PATH=/1proxy at build time
 // - Docker standalone: defaults to empty (let Next.js basePath handle it)
-// - GitHub Pages standalone: empty (basePath already configured in next.config.js)
+// - GitHub Pages standalone: empty (basePath already configured in next.config.ts)
 export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
-// The production backend API URL (Railway)
-export const API_URL = "https://helpful-alignment-production-2ae5.up.railway.app";
+// Public backend API URL. GitHub Pages injects NEXT_PUBLIC_API_URL during build.
+export const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ??
+  "https://helpful-alignment-production-2ae5.up.railway.app";
 
 /**
  * Ensures a path is correctly prefixed with BASE_PATH for EXTERNAL URLs only.
