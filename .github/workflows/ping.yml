@@ -9,7 +9,7 @@ jobs:
   ping-backend:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Railway backend
+      - name: Ping backend
         run: |
-          curl -s -o /dev/null -w "%{http_code}" https://helpful-alignment-production-2ae5.up.railway.app/health || true
-          curl -s -o /dev/null -w "%{http_code}" https://helpful-alignment-production-2ae5.up.railway.app/api/v1/proxies?limit=1 || true
+          curl -s -o /dev/null -w "%{http_code}" https://1proxy-api.aitradepulse.com/health || true
+          curl -s -o /dev/null -w "%{http_code}" https://1proxy-api.aitradepulse.com/api/v1/proxies?limit=1 || true

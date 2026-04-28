@@ -47,7 +47,7 @@ jobs:
           # - For custom domain at root: NEXT_PUBLIC_BASE_PATH=''
           # - For subdirectory (username.github.io/repo): NEXT_PUBLIC_BASE_PATH='/repo'
           NEXT_PUBLIC_BASE_PATH: '/1proxy'
-          NEXT_PUBLIC_API_URL: 'https://helpful-alignment-production-2ae5.up.railway.app'
+          NEXT_PUBLIC_API_URL: 'https://1proxy-api.aitradepulse.com'
       
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
