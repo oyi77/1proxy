@@ -1,9 +1,8 @@
 import asyncio
 from datetime import datetime, timedelta
-from app.database import AsyncSessionLocal, get_db
+from app.database import AsyncSessionLocal
 from app.db_storage import db_storage
 from app.grabber import GitHubGrabber, WebGrabber
-from app.sources import SourceRegistry
 from app.models import SourceType
 import logging
 
@@ -72,6 +71,12 @@ async def scrape_enabled_sources_once(session) -> dict:
 
             source_db.total_scraped = (source_db.total_scraped or 0) + len(proxies)
             source_db.last_scraped = datetime.utcnow()
+            source_db.validated = len(proxies) > 0
+            source_db.validation_error = None if proxies else "No proxies extracted from source"
+            if len(proxies) > 0:
+                source_db.success_rate = min(1.0, added / len(proxies))
+            else:
+                source_db.success_rate = 0.0
 
             logger.info(
                 f"✅ Scraped {len(proxies)} proxies from {source_db.name} (added {added} new)"

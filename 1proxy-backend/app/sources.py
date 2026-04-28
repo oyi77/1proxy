@@ -36,6 +36,21 @@ class SourceRegistry:
             enabled=True,
         ),
         SourceConfig(
+            url="https://raw.githubusercontent.com/Thordata/awesome-free-proxy-list/main/proxies/all.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/theriturajps/proxy-list/main/proxies.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/vmheaven/VMHeaven-Free-Proxy-Updated/main/http.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
             url="https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/protocols/http/data.txt",
             type=SourceType.GITHUB_RAW,
             enabled=True,

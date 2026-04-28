@@ -1,7 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, insert
+from sqlalchemy import select, func, and_
 from sqlalchemy.orm import selectinload
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from typing import List, Optional
 from datetime import datetime
 import logging
@@ -164,6 +163,7 @@ class DatabaseStorage:
                         "anonymity": proxy_data.get("anonymity"),
                         "proxy_type": proxy_data.get("proxy_type"),
                         "quality_score": proxy_data.get("quality_score"),
+                        "source_id": proxy_data.get("source_id"),
                         "is_working": True,
                         "validation_status": proxy_data.get(
                             "validation_status", "pending"
@@ -437,7 +437,7 @@ class DatabaseStorage:
         if user_id:
             query = query.where(ProxySource.user_id == user_id)
         if enabled_only:
-            query = query.where(ProxySource.enabled == True)
+            query = query.where(ProxySource.enabled.is_(True))
 
         result = await session.execute(query)
         return list(result.scalars().all())
@@ -452,7 +452,7 @@ class DatabaseStorage:
         max_latency: Optional[int] = None,
     ) -> Optional[Proxy]:
         query = select(Proxy).where(
-            Proxy.is_working == True, Proxy.validation_status == "validated"
+            Proxy.is_working.is_(True), Proxy.validation_status == "validated"
         )
 
         if protocol:
@@ -584,7 +584,7 @@ class DatabaseStorage:
 
         query = select(Notification).where(Notification.user_id == user_id)
         if unread_only:
-            query = query.where(Notification.read == False)
+            query = query.where(Notification.read.is_(False))
         query = query.order_by(Notification.created_at.desc()).limit(limit)
         result = await session.execute(query)
         return list(result.scalars().all())
@@ -616,7 +616,7 @@ class DatabaseStorage:
 
         stmt = (
             update(Notification)
-            .where(and_(Notification.user_id == user_id, Notification.read == False))
+            .where(and_(Notification.user_id == user_id, Notification.read.is_(False)))
             .values(read=True)
         )
         result = await session.execute(stmt)
