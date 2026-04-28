@@ -18,8 +18,32 @@ async def scrape_enabled_sources_once(session) -> dict:
     sources_db = await db_storage.get_sources(session, enabled_only=True)
 
     if not sources_db:
-        logger.warning("⚠️  No enabled sources found")
-        return {"total_scraped": 0, "total_added": 0, "sources": 0}
+        logger.warning("⚠️  No enabled sources found, auto-seeding...")
+        from app.db_models import User
+        from sqlalchemy import select
+        
+        admin_result = await session.execute(
+            select(User).where(User.role == "admin").limit(1)
+        )
+        admin = admin_result.scalar_one_or_none()
+        
+        if not admin:
+            admin = User(
+                oauth_provider="local",
+                oauth_id="admin",
+                email="admin@1proxy.local",
+                username="admin",
+                role="admin",
+            )
+            session.add(admin)
+            await session.commit()
+            await session.refresh(admin)
+        
+        await db_storage.seed_admin_sources(session, admin_user_id=admin.id)
+        sources_db = await db_storage.get_sources(session, enabled_only=True)
+        if not sources_db:
+            logger.error("❌ Auto-seed failed, no sources available")
+            return {"total_scraped": 0, "total_added": 0, "sources": 0}
 
     total_scraped = 0
     total_added = 0
