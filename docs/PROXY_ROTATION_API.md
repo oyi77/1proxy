@@ -83,7 +83,7 @@ Create a new rotation session with custom settings.
 **Request Body:**
 ```json
 {
-  "session_id": "my-custom-session",  // Optional - auto-generated if not provided
+  "session_id": "my-custom-session",
   "strategy": "round_robin",
   "max_usage_per_proxy": 10,
   "cooldown_minutes": 10
@@ -102,87 +102,23 @@ Create a new rotation session with custom settings.
 }
 ```
 
-**Use Case:**
-- Create multiple independent sessions for different tasks
-- Pre-configure rotation settings
-- Manage separate rotations for different use cases
-
 ---
 
 ### 3. Get Session Stats
 
 **GET** `/api/v1/proxies/rotate/session/{session_id}/stats`
 
-Get statistics and usage information for a rotation session.
-
-**Response:**
-```json
-{
-  "session_id": "my-session",
-  "strategy": "round_robin",
-  "created_at": "2024-01-15T12:00:00",
-  "last_used": "2024-01-15T12:15:30",
-  "total_proxies_used": 15,
-  "unique_proxies_used": 15,
-  "excluded_ips_count": 3,
-  "proxy_index": 5
-}
-```
-
-**Use Case:**
-- Monitor rotation activity
-- Track proxy usage
-- Debug rotation issues
-
----
-
 ### 4. Reset Rotation Session
 
 **POST** `/api/v1/proxies/rotate/session/{session_id}/reset`
-
-Reset a rotation session's state (clears usage history and excluded IPs).
-
-**Response:**
-```json
-{
-  "session_id": "my-session",
-  "message": "Rotation session reset successfully",
-  "previous_stats": { ... }
-}
-```
-
-**Use Case:**
-- Start fresh rotation
-- Reuse previously used proxies
-- Clear excluded IPs
-
----
 
 ### 5. Delete Rotation Session
 
 **DELETE** `/api/v1/proxies/rotate/session/{session_id}`
 
-Delete a rotation session completely.
-
-**Response:**
-```json
-{
-  "session_id": "my-session",
-  "message": "Rotation session deleted successfully"
-}
-```
-
-**Use Case:**
-- Clean up unused sessions
-- End rotation for a specific task
-
----
-
 ### 6. Exclude Proxy from Rotation
 
 **POST** `/api/v1/proxies/rotate/session/{session_id}/exclude`
-
-Manually exclude a proxy IP from rotation in a session.
 
 **Request Body:**
 ```json
@@ -191,29 +127,15 @@ Manually exclude a proxy IP from rotation in a session.
 }
 ```
 
-**Response:**
-```json
-{
-  "session_id": "my-session",
-  "excluded_ip": "192.168.1.1",
-  "message": "IP 192.168.1.1 excluded from rotation for this session"
-}
-```
-
-**Use Case:**
-- Avoid problematic proxies encountered during use
-- Manually filter out bad proxies
-- Exclude specific IPs from rotation
-
 ---
 
 ## Session Lifecycle
 
-1. **Creation**: Session auto-created on first `/rotate` request, or explicitly with `/rotate/session`
-2. **Usage**: Call `/rotate` repeatedly with same `session_id` to get different proxies
-3. **Maintenance**: Use `/exclude` to block bad proxies, `/reset` to start fresh
-4. **Expiration**: Sessions automatically expire after 60 minutes of inactivity
-5. **Cleanup**: Use DELETE to manually end a session
+1. **Creation**: Session auto-created on first `/rotate` request, or explicitly with `/rotate/session`.
+2. **Usage**: Call `/rotate` repeatedly with same `session_id` to get different proxies.
+3. **Maintenance**: Use `/exclude` to block bad proxies, `/reset` to start fresh.
+4. **Expiration**: Sessions automatically expire after 60 minutes of inactivity.
+5. **Cleanup**: Use DELETE to manually end a session.
 
 ---
 
@@ -221,29 +143,24 @@ Manually exclude a proxy IP from rotation in a session.
 
 ### For Web Scraping
 ```bash
-# Create session
 curl -X POST "https://api.1proxy.com/api/v1/proxies/rotate/session" \
   -d '{"strategy": "round_robin", "cooldown_minutes": 2, "max_usage_per_proxy": 3}'
 
-# Use in scraping loop
 curl "https://api.1proxy.com/api/v1/proxies/rotate?session_id=my-scrape-session&protocol=socks5"
 ```
 
 ### For High-Performance Requests
 ```bash
-# Use quality-based rotation with high-quality proxies
 curl "https://api.1proxy.com/api/v1/proxies/rotate?strategy=quality&min_quality=80&max_latency=300"
 ```
 
 ### For Load Balancing
 ```bash
-# Use least-used strategy to distribute load evenly
 curl "https://api.1proxy.com/api/v1/proxies/rotate?strategy=least_used"
 ```
 
 ### For Country-Specific Requests
 ```bash
-# Rotate through US proxies only
 curl "https://api.1proxy.com/api/v1/proxies/rotate?country_code=US"
 ```
 
@@ -273,54 +190,10 @@ curl "https://api.1proxy.com/api/v1/proxies/rotate?country_code=US"
 
 ---
 
-## Example Implementation (Python)
-
-```python
-import requests
-import time
-
-# Create rotation session
-session = requests.post("https://api.1proxy.com/api/v1/proxies/rotate/session", json={
-    "strategy": "round_robin",
-    "max_usage_per_proxy": 3,
-    "cooldown_minutes": 5
-}).json()
-
-session_id = session["session_id"]
-
-# Use proxies in rotation
-for i in range(10):
-    # Get next proxy
-    proxy = requests.get(
-        f"https://api.1proxy.com/api/v1/proxies/rotate?session_id={session_id}&min_quality=60"
-    ).json()
-
-    print(f"Using proxy: {proxy['url']} (Quality: {proxy['quality_score']})")
-
-    # Make request through proxy
-    response = requests.get(
-        "https://example.com",
-        proxies={"http": proxy['url'], "https": proxy['url']},
-        timeout=10
-    )
-
-    # If proxy fails, exclude it
-    if response.status_code != 200:
-        requests.post(
-            f"https://api.1proxy.com/api/v1/proxies/rotate/session/{session_id}/exclude",
-            json={"ip": proxy['ip']}
-        )
-        print(f"Excluded bad proxy: {proxy['ip']}")
-
-    time.sleep(2)  # Be respectful
-```
-
----
-
 ## Notes
 
-- Sessions are stored in-memory and expire after 60 minutes of inactivity
-- Automatic cleanup of expired sessions occurs periodically
-- Proxy caching improves performance (5-minute cache TTL)
-- All proxies returned are validated and working (is_working=True)
-- Rotation state is per-session, allowing multiple independent rotations
+- Sessions are stored in-memory and expire after 60 minutes of inactivity.
+- Automatic cleanup of expired sessions occurs periodically.
+- Proxy caching improves performance (5-minute cache TTL).
+- All proxies returned are validated and working (`is_working=True`).
+- Rotation state is per-session, allowing multiple independent rotations.
