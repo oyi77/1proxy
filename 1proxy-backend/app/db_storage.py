@@ -477,9 +477,9 @@ class DatabaseStorage:
         """
         # Single query with GROUP BY for protocol counts
         result = await session.execute(
-            select(Proxy.protocol, func.count(Proxy.id).label("count"))
-            .where(Proxy.validation_status == "validated")
-            .group_by(Proxy.protocol)
+            select(Proxy.protocol, func.count(Proxy.id).label("count")).group_by(
+                Proxy.protocol
+            )
         )
 
         by_protocol = {}
