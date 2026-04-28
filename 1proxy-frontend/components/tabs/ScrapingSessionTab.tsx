@@ -7,13 +7,18 @@ interface ScrapingSessionTabProps {
   theme: string;
 }
 
+type SessionStatusFilter = 'all' | 'active' | 'completed';
+
+const isSessionStatusFilter = (value: string): value is SessionStatusFilter =>
+  value === 'all' || value === 'active' || value === 'completed';
+
 export function ScrapingSessionTab({ theme }: ScrapingSessionTabProps) {
   const [sessions, setSessions] = useState<ScrapingSession[]>([]);
   const [stats, setStats] = useState<SessionStatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [statusFilter, setStatusFilter] = useState<SessionStatusFilter>('all');
 
   const fetchData = async () => {
     try {
@@ -197,7 +202,11 @@ export function ScrapingSessionTab({ theme }: ScrapingSessionTabProps) {
           <div className="flex gap-3">
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
+              onChange={(e) => {
+                if (isSessionStatusFilter(e.target.value)) {
+                  setStatusFilter(e.target.value);
+                }
+              }}
               className="px-4 py-2 rounded-lg font-bold outline-none"
               style={{
                 backgroundColor: theme === 'dark' ? 'var(--dark-bg)' : '#F0F0F0',

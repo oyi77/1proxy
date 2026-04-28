@@ -24,8 +24,8 @@ const nextConfig: NextConfig = {
   
   experimental: {
     turbo: {
-      resolveExtensions: ['.web.tsx', '.web.ts', '.tsx', '.ts', '.web.js', '.js'] as any,
-    } as any,
+      resolveExtensions: ['.web.tsx', '.web.ts', '.tsx', '.ts', '.web.js', '.js'],
+    },
   },
 };
 

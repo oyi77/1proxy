@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { api } from '@/lib/api'
 
+const okJsonResponse = (): Pick<Response, 'ok' | 'json'> => ({
+  ok: true,
+  json: async () => ({}),
+})
+
 describe('api fetch credentials', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -8,7 +13,7 @@ describe('api fetch credentials', () => {
 
   it('includes credentials for admin endpoints', async () => {
     const fetchMock = global.fetch as unknown as ReturnType<typeof vi.fn>
-    fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) } as any)
+    fetchMock.mockResolvedValue(okJsonResponse())
 
     await api.getAdminValidationStats()
 
@@ -20,7 +25,7 @@ describe('api fetch credentials', () => {
 
   it('includes credentials for mutating endpoints', async () => {
     const fetchMock = global.fetch as unknown as ReturnType<typeof vi.fn>
-    fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) } as any)
+    fetchMock.mockResolvedValue(okJsonResponse())
 
     await api.deleteProxy(123)
 
