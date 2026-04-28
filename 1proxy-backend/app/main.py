@@ -13,9 +13,17 @@ from slowapi.errors import RateLimitExceeded
 from app.models import SourceConfig, SourceType
 from app.grabber import GitHubGrabber
 from app.sources import SourceRegistry
-from app.database import init_db, AsyncSessionLocal, get_db, AsyncSession
+from app.database import (
+    init_db,
+    AsyncSessionLocal,
+    get_db,
+    AsyncSession,
+    database_keepalive_worker,
+    dispose_database,
+)
 from app.db_storage import db_storage
 from app.routers import auth, sources, proxies, notifications, validation, admin
+from app.admin.scraping_admin import router as scraping_admin_router
 from app.dependencies import require_admin
 from app.db_models import User
 from app.background_validator import background_validation_worker
@@ -135,16 +143,22 @@ app.include_router(proxies.router)
 app.include_router(notifications.router)
 app.include_router(validation.router)
 app.include_router(admin.router)
-
-from app.admin.scraping_admin import router as scraping_admin_router
-
 app.include_router(scraping_admin_router)
+
 
 grabber = GitHubGrabber()
 
 
+def _track_background_task(coro, name: str):
+    task = asyncio.create_task(coro, name=name)
+    app.state.background_tasks.add(task)
+    task.add_done_callback(app.state.background_tasks.discard)
+    return task
+
+
 @app.on_event("startup")
 async def startup():
+    app.state.background_tasks = set()
     await init_db()
 
     async with AsyncSessionLocal() as session:
@@ -174,17 +188,35 @@ async def startup():
 
         logger.info("🚀 Stabilizer: Spawning background workers...")
         # Start validation worker with reduced batch size for HF
-        asyncio.create_task(
-            background_validation_worker(batch_size=20, interval_seconds=60)
+        _track_background_task(
+            background_validation_worker(batch_size=20, interval_seconds=60),
+            "proxy-validation-worker",
         )
 
         # Import and start auto-scraper
         from app.background_validator import background_scraper_worker
 
-        asyncio.create_task(background_scraper_worker(interval_minutes=10))
+        _track_background_task(
+            background_scraper_worker(interval_minutes=10), "proxy-scraper-worker"
+        )
+        _track_background_task(
+            database_keepalive_worker(interval_seconds=300), "database-keepalive-worker"
+        )
         logger.info("✅ Stabilizer: Background workers active")
 
-    asyncio.create_task(delayed_workers())
+    _track_background_task(delayed_workers(), "startup-delayed-workers")
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    tasks = getattr(app.state, "background_tasks", set())
+    for task in list(tasks):
+        task.cancel()
+
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+    await dispose_database()
 
 
 @app.get("/")

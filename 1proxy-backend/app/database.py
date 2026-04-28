@@ -1,7 +1,13 @@
+import asyncio
+import logging
+import os
+
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import create_engine
-import os
+
+
+logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./data/1proxy.db")
 
@@ -64,3 +70,28 @@ async def get_db():
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+
+async def ping_database_once() -> bool:
+    """Run a lightweight database ping and return whether it succeeded."""
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        return True
+    except Exception as exc:
+        logger.warning("Database keepalive ping failed: %s", exc)
+        return False
+
+
+async def database_keepalive_worker(interval_seconds: int = 300):
+    """Periodically touch the database so idle deployments stay warm."""
+    logger.info("🔄 Database keepalive worker started")
+
+    while True:
+        await ping_database_once()
+        await asyncio.sleep(interval_seconds)
+
+
+async def dispose_database():
+    """Close pooled async DB connections during application shutdown."""
+    await engine.dispose()
