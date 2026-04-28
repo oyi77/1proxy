@@ -293,8 +293,11 @@ async def get_recent_validations(
             for p in proxies
         ]
     }
+
+
+@router.post("/seed-sources")
 @limiter.limit("5/minute")
-async def seed_sources(session: AsyncSession = Depends(get_db)):
+async def seed_sources(request: Request, session: AsyncSession = Depends(get_db)):
     """
     Manually seed admin sources. Use if sources are empty.
     """
