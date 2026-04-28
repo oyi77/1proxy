@@ -1,5 +1,7 @@
 # Cost Correlation Analysis
 
+> **Status note (2026-04-28):** Current production uses GitHub Pages for the frontend, Railway for the backend, and Supabase Postgres for the database. Older Fly.io/R2 examples below are historical cost-model references, not the active deployment plan.
+
 This document analyzes the operational costs, resource consumption, and scaling considerations for the 1proxy platform.
 
 ## Resource Consumption Overview
@@ -49,7 +51,7 @@ Each proxy undergoes 8+ validation checks:
 
 ## Free Tier Cost Analysis
 
-### Fly.io (Backend)
+### Historical Fly.io Backend Option
 | Resource | Free Tier | Our Usage | Cost |
 |----------|-----------|-----------|------|
 | CPU | 3 shared CPUs | 1 shared | $0 |
@@ -59,7 +61,7 @@ Each proxy undergoes 8+ validation checks:
 
 **Total Monthly Cost: $0**
 
-### Railway (Frontend + DB)
+### Railway Backend / Supabase Database
 | Resource | Free Tier | Our Usage | Cost |
 |----------|-----------|-----------|------|
 | CPU | 0.5 shared | 0.5 shared | $0 |
@@ -69,7 +71,7 @@ Each proxy undergoes 8+ validation checks:
 
 **Total Monthly Cost: $0**
 
-### Cloudflare R2 (Backups)
+### Historical Cloudflare R2 Backup Option
 | Resource | Free Tier | Our Usage | Cost |
 |----------|-----------|-----------|------|
 | Storage | 10GB | 1GB | $0 |
@@ -151,27 +153,30 @@ Cache frequently accessed data:
 ## Recommendations
 
 ### For Personal Use
-- Fly.io (backend) - Free tier sufficient
-- Railway (frontend + DB) - Free tier sufficient
+- GitHub Pages (frontend) - Free static hosting
+- Railway (backend) - sufficient for small deployments when worker intervals stay conservative
+- Supabase (database) - Postgres free tier suitable for early usage
 - **Total: $0/month**
 
 ### For Small Teams
-- Fly.io (backend) - $20/month (dedicated CPU)
-- Railway (frontend + DB) - $25/month (dedicated DB)
+- GitHub Pages (frontend) - Free static hosting
+- Railway (backend) - scale service resources as scraping/validation load grows
+- Supabase (database) - upgrade Postgres plan as storage and connection needs grow
 - **Total: $45/month**
 
 ### For Production
-- Fly.io (backend) - $50/month (2 dedicated CPUs)
-- Railway (frontend + DB) - $50/month (2GB DB)
+- GitHub Pages or CDN frontend hosting
+- Railway backend with monitored worker batch sizes and health checks
+- Supabase Postgres with backups and connection pooling
 - **Total: $100/month**
 
 ## Conclusion
 
-The 1proxy platform can operate at **zero cost** using free tiers from Fly.io and Railway, making it accessible for personal use and small teams. For larger deployments, the cost scales linearly with proxy count and validation frequency.
+The 1proxy platform can operate at low cost using GitHub Pages, Railway, and Supabase free/entry tiers, making it accessible for personal use and small teams. For larger deployments, the cost scales primarily with proxy count, validation frequency, database size, and outbound traffic.
 
 The platform is designed to be cost-effective while providing a robust proxy aggregation service. Future revenue opportunities (premium access, API subscriptions) can offset operational costs for larger deployments.
 
 ---
 
-**Last Updated**: January 16, 2026  
-**Version**: 1.0
+**Last Updated**: April 28, 2026
+**Version**: 1.1

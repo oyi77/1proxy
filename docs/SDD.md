@@ -1,16 +1,18 @@
 # SDD: 1proxy Platform (Robust, Free, Fast)
 
+> **Status note (2026-04-28):** This SDD contains original architecture research and historical deployment options. The current production runbook is GitHub Pages frontend, Railway backend, and Supabase Postgres database. See [`deployment.md`](./deployment.md) and [`infrastructure.md`](./infrastructure.md) for live operations.
+
 ## 1. Introduction
 1proxy is a high-performance proxy aggregation platform inspired by `wzdnzd/aggregator`. It aims to provide a robust, completely free (zero-infrastructure cost) solution for aggregating, validating, and serving proxies across multiple protocols (VMess, VLESS, Reality, Trojan, Shadowsocks, HTTP, SOCKS).
 
 ## 2. Architectural Design (Optimized for $0)
 
 ### 2.1 Core Strategy: "Ephemeral Hot, Persistent Cold"
-To fit into free tiers (Railway, HuggingFace, Neon), we utilize a hybrid strategy:
+Original research considered free tiers such as Railway, HuggingFace, and Neon; current production uses Railway plus Supabase Postgres. The historical hybrid strategy was:
 - **Hot Buffer (Redis)**: ephemeral storage for high-frequency status updates and real-time rotation.
 - **Persistent Store (Postgres)**: long-term metadata and metrics.
 - **Free PaaS Selection**:
-    - **API & Workers**: HuggingFace Spaces (Docker) - Provides 2 vCPU, 16GB RAM for free.
+    - **API & Workers**: Historical HuggingFace Spaces option (Docker).
     - **Database**: Neon (Serverless Postgres) - 500MB free, high concurrency.
     - **Cache**: Upstash (Serverless Redis) - 10k requests/day free (Hot state).
     - **Scraping**: GitHub Actions (Cron) - Periodic "seed" scraping.
@@ -18,7 +20,7 @@ To fit into free tiers (Railway, HuggingFace, Neon), we utilize a hybrid strateg
 ### 2.2 Component Diagram
 ```mermaid
 graph TB
-    subgraph HF_Spaces["HuggingFace Spaces (Docker)"]
+    subgraph Historical_HF_Spaces["Historical HuggingFace Spaces Option"]
         API[FastAPI Service]
         CELERY_W[Celery Worker]
         CELERY_B[Celery Beat]
@@ -62,7 +64,7 @@ graph TB
 ## 4. Free Deployment Blueprint
 
 ### 4.1 "Zero Sleep" Hack
-Use **UptimeRobot** or **Healthchecks.io** (Free tiers) to send a heartbeat request to the HuggingFace Space every 5-15 minutes. This prevents the container from idling.
+For historical sleep-prone hosts, **UptimeRobot** or **Healthchecks.io** could send a heartbeat request every 5-15 minutes. The current Railway deployment instead relies on Railway service settings and the app's lightweight database keepalive worker.
 
 ### 4.2 Resource Constraints & Mitigation
 | Resource | Limit (Free Tier) | 1proxy Mitigation Strategy |
@@ -1069,7 +1071,9 @@ async def get_proxies(request: Request):
 
 ## 11. Deployment Guide
 
-### 11.1 Fly.io Deployment
+The live production deployment is documented in [`deployment.md`](./deployment.md). The examples below are retained as historical alternatives and design references.
+
+### 11.1 Historical Fly.io Deployment Option
 
 ```bash
 # Install flyctl
@@ -1214,4 +1218,3 @@ api:
 | **Tech Lead** | TBD | TBD | TBD |
 | **Product Owner** | TBD | TBD | TBD |
 | **Security Review** | TBD | TBD | TBD |
-

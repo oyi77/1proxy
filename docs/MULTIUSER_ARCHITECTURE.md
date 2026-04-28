@@ -445,8 +445,9 @@ async def test_google_access(self, proxy_url: str) -> bool:
 ### Infrastructure
 - **Docker Compose** - Local development
 - **Redis** - Caching & sessions
-- **Nginx** - Reverse proxy
-- **Litestream** - PostgreSQL backups
+- **GitHub Pages** - Production frontend static hosting
+- **Railway** - Production backend hosting
+- **Supabase Postgres** - Production database
 
 ---
 
@@ -457,14 +458,12 @@ async def test_google_access(self, proxy_url: str) -> bool:
    - Designed comprehensive database schema
    - Planned OAuth integration
 
-2. **Ready to Implement**:
-   - Set up PostgreSQL database
-   - Create migration files
-   - Implement OAuth (GitHub first)
-   - Port validation logic from jhao104/proxy_pool
-   - Build user management system
-
-**Estimated Timeline**: 3-4 weeks for full implementation
+2. **Implemented** ✅
+   - SQLAlchemy/Alembic database layer
+   - OAuth with GitHub and Google
+   - Proxy validation pipeline
+   - User source management
+   - Production deployment on GitHub Pages, Railway, and Supabase
 
 ---
 
