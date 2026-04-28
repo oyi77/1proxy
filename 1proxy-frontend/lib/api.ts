@@ -62,6 +62,49 @@ export interface Source {
   is_admin_source: boolean;
 }
 
+export type SourceType = "github_raw" | "subscription_base64" | "generic_text";
+
+export interface SourceCreateRequest {
+  url: string;
+  type: SourceType;
+  name?: string;
+  description?: string;
+  is_paid: boolean;
+}
+
+export interface SourceCreateResponse {
+  message: string;
+  source_id: number;
+  validation: {
+    proxy_count: number;
+    sample_proxies: string[];
+  };
+}
+
+export interface UserStats {
+  total_sources: number;
+  active_sources: number;
+  total_proxies_contributed: number;
+  avg_success_rate: number;
+}
+
+export interface ApiErrorDetail {
+  error?: string;
+  reason?: string;
+}
+
+const extractApiError = async (res: Response, fallback: string) => {
+  try {
+    const data = (await res.json()) as { detail?: string | ApiErrorDetail };
+    if (typeof data.detail === "string") return data.detail;
+    if (data.detail?.reason) return data.detail.reason;
+    if (data.detail?.error) return data.detail.error;
+  } catch {
+    return fallback;
+  }
+  return fallback;
+};
+
 export interface SourcesResponse {
   total: number;
   enabled: number;
@@ -123,11 +166,11 @@ export interface ScrapeAllResponse {
 }
 
 export interface ScrapingConfig {
-  global_config: Record<string, any>;
-  module_configs: Record<string, any>;
-  active_sessions: Array<Record<string, any>>;
-  rate_limiter_status: Record<string, any>;
-  performance_stats: Record<string, any>;
+  global_config: Record<string, unknown>;
+  module_configs: Record<string, unknown>;
+  active_sessions: Array<Record<string, unknown>>;
+  rate_limiter_status: Record<string, unknown>;
+  performance_stats: Record<string, unknown>;
 }
 
 export interface ScrapingSession {
@@ -156,7 +199,7 @@ export interface SessionStatsResponse {
 }
 
 export interface ProxySourceManagement {
-  sources: Array<Record<string, any>>;
+  sources: Array<Record<string, unknown>>;
   total: number;
   pending_approval: number;
   auto_discovered: number;
@@ -181,7 +224,7 @@ export interface QueueStatus {
 
 export interface AdvancedScrapingConfig {
   enable_scheduler: boolean;
-  schedule?: Record<string, any>;
+  schedule?: Record<string, unknown>;
   enable_proxy_testing: boolean;
   proxy_rotation_enabled: boolean;
   max_proxies_per_source?: number;
@@ -246,6 +289,35 @@ export const api = {
     return res.json();
   },
 
+  async getMySources(): Promise<Source[]> {
+    const res = await apiFetch(`${API_BASE}/api/v1/my-sources`);
+    if (!res.ok) throw new Error(await extractApiError(res, "Failed to fetch your sources"));
+    return res.json();
+  },
+
+  async getMyStats(): Promise<UserStats> {
+    const res = await apiFetch(`${API_BASE}/api/v1/my-stats`);
+    if (!res.ok) throw new Error(await extractApiError(res, "Failed to fetch your stats"));
+    return res.json();
+  },
+
+  async createMySource(data: SourceCreateRequest): Promise<SourceCreateResponse> {
+    const res = await apiFetch(`${API_BASE}/api/v1/my-sources`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(await extractApiError(res, "Failed to add source"));
+    return res.json();
+  },
+
+  async deleteMySource(id: number): Promise<void> {
+    const res = await apiFetch(`${API_BASE}/api/v1/my-sources/${id}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) throw new Error(await extractApiError(res, "Failed to delete source"));
+  },
+
   async scrapeAllSources(): Promise<ScrapeAllResponse> {
     const res = await apiFetch(`${API_BASE}/api/v1/proxies/scrape-all`, {
       method: "POST",
@@ -293,8 +365,8 @@ export const api = {
 
   async updateScrapingConfig(
     moduleName: string,
-    settings: Record<string, any>
-  ): Promise<{ message: string; updated_config: Record<string, any> }> {
+    settings: Record<string, unknown>
+  ): Promise<{ message: string; updated_config: Record<string, unknown> }> {
     const res = await apiFetch(
       `${API_BASE}/api/v1/admin/scraping/scraping/config/${moduleName}`,
       {
@@ -412,7 +484,7 @@ export const api = {
 
   async validateProxySource(
     sourceId: number
-  ): Promise<{ message: string; validation_result: Record<string, any> }> {
+  ): Promise<{ message: string; validation_result: Record<string, unknown> }> {
     const res = await apiFetch(
       `${API_BASE}/api/v1/admin/scraping/scraping/proxy-sources/${sourceId}/validate`,
       {
@@ -497,7 +569,7 @@ export const api = {
 
   async executeScrapingOperation(
     operation: string
-  ): Promise<{ message: string; result: any }> {
+  ): Promise<{ message: string; result: unknown }> {
     const res = await apiFetch(
       `${API_BASE}/api/v1/admin/scraping/scraping/operations/${operation}`,
       {
