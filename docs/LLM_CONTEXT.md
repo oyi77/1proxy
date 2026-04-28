@@ -6,7 +6,7 @@ This document is optimized for LLMs to quickly understand the project structure,
 - **Repository**: `oyi77/1proxy`
 - **Primary Branch**: `main`
 - **Frontend URL**: `https://oyi77.is-a.dev/1proxy/`
-- **Backend API URL**: `https://helpful-alignment-production-2ae5.up.railway.app`
+- **Backend API URL**: `https://1proxy-api.aitradepulse.com`
 
 ## 🏗️ Technical Architecture
 
@@ -17,7 +17,7 @@ graph TD
         API_USER[Direct API Users]
     end
 
-    subgraph "Backend (Railway)"
+    subgraph "Backend (Local + Cloudflare Tunnel)"
         F[FastAPI App]
         S[Background Scheduler]
         V[Proxy Validator]

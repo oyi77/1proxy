@@ -1,4 +1,4 @@
-# Deployment Guide - GitHub Pages + Railway + Supabase
+# Deployment Guide - GitHub Pages + Local Backend + Cloudflare Tunnel
 
 This is the short production runbook. The detailed operations guide lives at [`deployment.md`](./deployment.md).
 
@@ -7,9 +7,9 @@ This is the short production runbook. The detailed operations guide lives at [`d
 | Layer | Provider | Current URL / Setting |
 |-------|----------|-----------------------|
 | Frontend | GitHub Pages | `https://oyi77.is-a.dev/1proxy/` |
-| Backend API | Railway | `https://helpful-alignment-production-2ae5.up.railway.app` |
-| API docs | Railway | `https://helpful-alignment-production-2ae5.up.railway.app/docs` |
-| Database | Supabase Postgres | Set through Railway `DATABASE_URL` |
+| Backend API | Local FastAPI + Cloudflare Tunnel | `https://1proxy-api.aitradepulse.com` |
+| API docs | Local FastAPI + Cloudflare Tunnel | `https://1proxy-api.aitradepulse.com/docs` |
+| Database | Local SQLite or Supabase Postgres | Set through backend `DATABASE_URL` |
 
 ## Deploy Frontend
 
@@ -17,22 +17,22 @@ Push to `main`. `.github/workflows/deploy-frontend.yml` builds `1proxy-frontend`
 
 ```yaml
 NEXT_PUBLIC_BASE_PATH: /1proxy
-NEXT_PUBLIC_API_URL: https://helpful-alignment-production-2ae5.up.railway.app
+NEXT_PUBLIC_API_URL: https://1proxy-api.aitradepulse.com
 ```
 
 ## Deploy Backend
 
-Railway uses `railway.json` and `1proxy-backend/Dockerfile.railway`. The container command runs:
+The local backend runs from `1proxy-backend` and is exposed by `cf-router` as `1proxy-api.aitradepulse.com`.
 
 ```bash
-alembic upgrade head && python -m uvicorn app.main:app --host 0.0.0.0 --port 8080
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-Required Railway variables:
+Required backend variables:
 
-- `DATABASE_URL` - Supabase Postgres SQLAlchemy async URL.
+- `DATABASE_URL` - SQLite or Supabase Postgres SQLAlchemy async URL.
 - `SECRET_KEY` - random JWT signing key.
-- `API_URL` - Railway backend public URL.
+- `API_URL` - `https://1proxy-api.aitradepulse.com`.
 - `FRONTEND_URL` - `https://oyi77.is-a.dev/1proxy`.
 - `FRONTEND_BASE_PATH` - `/1proxy`.
 - `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`.

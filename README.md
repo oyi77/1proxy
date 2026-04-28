@@ -18,7 +18,7 @@ graph TD
         FE[Next.js 15 App]
     end
 
-    subgraph "Backend (Railway)"
+    subgraph "Backend (Local + Cloudflare Tunnel)"
         API[FastAPI Service]
         VAL[Proxy Validator]
         SCH[Background Scheduler]
@@ -53,8 +53,8 @@ graph TD
 ## 🚀 Quick Links
 
 - **Frontend**: [https://oyi77.is-a.dev/1proxy/](https://oyi77.is-a.dev/1proxy/)
-- **Backend API**: [https://helpful-alignment-production-2ae5.up.railway.app](https://helpful-alignment-production-2ae5.up.railway.app)
-- **API Documentation**: [https://helpful-alignment-production-2ae5.up.railway.app/docs](https://helpful-alignment-production-2ae5.up.railway.app/docs)
+- **Backend API**: [https://1proxy-api.aitradepulse.com](https://1proxy-api.aitradepulse.com)
+- **API Documentation**: [https://1proxy-api.aitradepulse.com/docs](https://1proxy-api.aitradepulse.com/docs)
 
 ---
 
@@ -66,7 +66,7 @@ graph TD
 | **Backend** | FastAPI, SQLAlchemy (Async), Pydantic v2 |
 | **Validation** | aiohttp, BeautifulSoup4, Custom Scoring |
 | **Database** | SQLite (Dev) / Supabase PostgreSQL (Prod), Alembic |
-| **Deployment** | GitHub Pages (FE), Railway (BE), Supabase (DB) |
+| **Deployment** | GitHub Pages (FE), local FastAPI via Cloudflare Tunnel (BE), SQLite/Supabase-compatible DB |
 
 ---
 
