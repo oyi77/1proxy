@@ -70,11 +70,13 @@ Community-driven proxy aggregation platform. FastAPI backend + Next.js 15 fronte
 - **Async sessions**: Always use `async with get_db()` pattern
 - **Models**: SQLAlchemy 2.0 declarative, defined in `db_models.py`
 
-### Docker
+### Deployment
 - **Multi-stage builds**: Frontend uses deps → builder → runner pattern
 - **Health checks**: Backend `/health`, Redis `redis-cli ping`
-- **Env vars**: Centralized in `.env` (see `.env.example`)
-- **Standalone output**: Frontend uses Next.js `standalone` mode for production
+- **Env vars**: Local examples live in `.env.example`; production secrets live in Railway variables
+- **Frontend**: GitHub Pages static export under `/1proxy`
+- **Backend**: Railway FastAPI service using `railway.json` and `1proxy-backend/Dockerfile.railway`
+- **Database**: Supabase Postgres via Railway `DATABASE_URL`
 
 ## ANTI-PATTERNS (THIS PROJECT)
 
@@ -153,11 +155,11 @@ alembic downgrade -1                               # Rollback one version
 ## NOTES
 
 - **Frontend tests**: Vitest setup in place (vitest.config.ts, vitest.setup.tsx)
-- **SQLite for dev** - PostgreSQL recommended for production
+- **SQLite for dev** - Supabase PostgreSQL is production
 - **Redis required** - used for session storage and caching
 - **OAuth setup required** - get credentials from GitHub/Google developer consoles
-- **"Zero Sleep" hack** - see `docs/SDD.md` for HuggingFace deployment patterns
+- **Railway/Supabase ops** - see `docs/deployment.md` and `docs/infrastructure.md`
 - **Proxy safety invariant** - unvalidated proxies NEVER reach users
 - **Large files** - 3 files >500 lines (db_storage.py, proxies.py, test_validator.py)
-- **No CI/CD workflows yet** - uses custom bash scripts (start.sh, test-integration.sh)
+- **CI/CD workflows** - GitHub Actions runs frontend Pages deploy and CI; Railway deploys backend from `main`
 - **Duplicate code**: `proxies.py` has redundant `limiter` declaration and test_proxy block

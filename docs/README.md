@@ -11,18 +11,23 @@ Welcome to the 1proxy documentation! This directory contains all technical docum
 
 ### 2. Implementation Guides
 - **[FINAL_IMPLEMENTATION_REPORT.md](./FINAL_IMPLEMENTATION_REPORT.md)** - Complete implementation summary (READ THIS FIRST!)
-- **[IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md)** - Detailed progress tracking
 - **[IMPLEMENTATION_COMPLETE.md](./IMPLEMENTATION_COMPLETE.md)** - Initial platform completion notes
+- **[QUICKSTART.md](./QUICKSTART.md)** - Local developer quickstart
+- **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** - Short production deployment runbook
+- **[archive/IMPLEMENTATION_STATUS.md](./archive/IMPLEMENTATION_STATUS.md)** - Historical progress tracking archive
 
 ### 3. Feature Documentation
 - **[INTEGRATION_SUMMARY.md](./INTEGRATION_SUMMARY.md)** - Source integration overview
 - **[SOURCES_INTEGRATION.md](./SOURCES_INTEGRATION.md)** - 20+ proxy sources technical details
+- **[PROXY_ROTATION_API.md](./PROXY_ROTATION_API.md)** - Proxy rotation API reference
 - **[research.md](./research.md)** - Reliability, source-quality, and premium-source research notes
 
 ### 4. Operations
-- **[infrastructure.md](./infrastructure.md)** - Infrastructure setup (Coming Soon)
-- **[deployment.md](./deployment.md)** - Deployment guide
-- **[correlation.md](./correlation.md)** - Cost correlation analysis (Coming Soon)
+- **[infrastructure.md](./infrastructure.md)** - Current GitHub Pages + Railway + Supabase infrastructure
+- **[deployment.md](./deployment.md)** - Deployment, OAuth, environment, and secret-rotation guide
+- **[correlation.md](./correlation.md)** - Cost correlation analysis
+- **[archive/TODO.md](./archive/TODO.md)** - Historical task list
+- **[archive/ANALYSIS_REPORT.md](./archive/ANALYSIS_REPORT.md)** - Historical audit notes
 
 
 ---
@@ -35,14 +40,14 @@ Welcome to the 1proxy documentation! This directory contains all technical docum
 3. Check [MULTIUSER_ARCHITECTURE.md](./MULTIUSER_ARCHITECTURE.md) for database schema and API design
 
 **For Deployment:**
-1. Follow [deployment.md](./deployment.md) for step-by-step instructions
-2. Review [SDD.md](./SDD.md) for system requirements
+1. Follow [deployment.md](./deployment.md) for GitHub Pages, Railway, and Supabase setup
+2. Review [infrastructure.md](./infrastructure.md) for current production topology
 
 
 **For Contributing:**
 1. Understand the multi-user system: [MULTIUSER_ARCHITECTURE.md](./MULTIUSER_ARCHITECTURE.md)
 2. Review source integration: [SOURCES_INTEGRATION.md](./SOURCES_INTEGRATION.md)
-3. Check implementation status: [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md)
+3. Check current operations: [deployment.md](./deployment.md)
 
 ---
 
@@ -70,17 +75,17 @@ Welcome to the 1proxy documentation! This directory contains all technical docum
 
 ### Frontend Developer
 - [MULTIUSER_ARCHITECTURE.md](./MULTIUSER_ARCHITECTURE.md) - API endpoints, data models
-- [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md) - Remaining frontend work
+- [LLM_CONTEXT.md](./LLM_CONTEXT.md) - Commands, invariants, and deployment URLs
 
 ### DevOps Engineer
-- [infrastructure.md](./infrastructure.md) - Infrastructure setup (TODO)
-- [deployment.md](./deployment.md) - Deployment procedures (TODO)
-- [SDD.md](./SDD.md) - System requirements
+- [infrastructure.md](./infrastructure.md) - Current production topology
+- [deployment.md](./deployment.md) - Deployment procedures and secret handling
+- [SDD.md](./SDD.md) - System design background
 
 ### Product Manager
 - [FINAL_IMPLEMENTATION_REPORT.md](./FINAL_IMPLEMENTATION_REPORT.md) - Feature overview
 - [INTEGRATION_SUMMARY.md](./INTEGRATION_SUMMARY.md) - Platform capabilities
-- [correlation.md](./correlation.md) - Cost analysis (TODO)
+- [correlation.md](./correlation.md) - Cost analysis
 
 ---
 
@@ -102,9 +107,10 @@ When adding new documentation:
 - **2026-01-11**: Integrated 10 auto-updated GitHub proxy sources
 - **2026-01-11**: Implemented OAuth authentication (GitHub + Google)
 - **2026-01-11**: Created advanced proxy validation system
+- **2026-04-28**: Updated operations docs for GitHub Pages frontend, Railway backend, and Supabase database
 
 ---
 
-**Last Updated**: January 11, 2026  
+**Last Updated**: April 28, 2026
 **Documentation Version**: 2.0  
 **Platform Version**: 0.2.0-alpha

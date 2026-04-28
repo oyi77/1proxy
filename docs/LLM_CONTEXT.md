@@ -17,11 +17,14 @@ graph TD
         API_USER[Direct API Users]
     end
 
-    subgraph "Infrastructure (Railway)"
+    subgraph "Backend (Railway)"
         F[FastAPI App]
         S[Background Scheduler]
         V[Proxy Validator]
-        DB[(SQLite/PG)]
+    end
+
+    subgraph "Database (Supabase)"
+        DB[(Postgres)]
     end
 
     subgraph "Sources"
@@ -51,10 +54,11 @@ graph TD
 ## 📦 Deployment Commands
 
 ### Backend (Railway)
-The backend is auto-deployed via GitHub push or manual Railway CLI:
+The backend is deployed from `railway.json` and `1proxy-backend/Dockerfile.railway`:
 ```bash
 railway up
 ```
+Production database access comes from Railway `DATABASE_URL`, pointing at Supabase Postgres with a `postgresql+asyncpg://...` URL.
 
 ### Frontend (GitHub Pages)
 The frontend is auto-deployed via GitHub Actions on every push to `main`.
@@ -68,7 +72,7 @@ NEXT_PUBLIC_BASE_PATH='/1proxy' npm run build
 1. **Async-Only**: All database and network I/O must be `async/await`. No blocking `requests` or `time.sleep`.
 2. **Path Mapping**: When deploying to subdirectory, `NEXT_PUBLIC_BASE_PATH` must match the URL path.
 3. **Validation**: No proxy is served to the public until `ProxyValidator.validate()` sets `is_active=True`.
-4. **Secrets**: Never commit `.env`. Use Railway Variables or GH Secrets.
+4. **Secrets**: Never commit `.env`, Railway tokens, Supabase service-role JWTs, OAuth secrets, or database passwords. Use Railway Variables and GitHub Actions secrets.
 
 ## 📁 Critical Files
 - `1proxy-backend/app/main.py`: App Entry & CORS
@@ -76,6 +80,7 @@ NEXT_PUBLIC_BASE_PATH='/1proxy' npm run build
 - `1proxy-frontend/next.config.ts`: Export & Path Settings
 - `1proxy-backend/Dockerfile.railway`: Production Build Recipe
 - `railway.json`: Railway Service Config
+- `docs/deployment.md`: GitHub Pages + Railway + Supabase runbook
 
 ---
 *Assistant Hint: Always check `AGENTS.md` in each subdirectory for domain-specific deep context.*
