@@ -12,19 +12,22 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "1proxy"
     API_V1_STR: str = "/api/v1"
 
-    # SECRET_KEY: Auto-generate secure default for HuggingFace/development
+    # SECRET_KEY: Auto-generate secure default for development.
     # IMPORTANT: Set this in production via environment variable!
     SECRET_KEY: str = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
 
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 
-    # URLs - Auto-detect HuggingFace Space environment
-    API_URL: str = (
-        os.getenv("SPACE_HOST", "").replace("https://", "https://")
-        if os.getenv("SPACE_HOST")
-        else "http://localhost:8000"
+    # Public URLs. Production runs with the frontend on GitHub Pages and the
+    # backend on Railway. Railway can provide RAILWAY_PUBLIC_DOMAIN; API_URL and
+    # FRONTEND_URL remain explicit overrides for local/dev and custom domains.
+    API_URL: str = os.getenv(
+        "API_URL",
+        f"https://{os.getenv('RAILWAY_PUBLIC_DOMAIN')}"
+        if os.getenv("RAILWAY_PUBLIC_DOMAIN")
+        else "http://localhost:8000",
     )
-    FRONTEND_URL: str = os.getenv("SPACE_HOST", "http://localhost:3000")
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
     # Optional base path when frontend is hosted under a subpath (e.g. GitHub Pages)
     FRONTEND_BASE_PATH: str = os.getenv("FRONTEND_BASE_PATH", "")
 

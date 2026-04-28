@@ -83,7 +83,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# CORS middleware configuration - support HF Spaces, Railway, GitHub Pages, and local development
+# CORS middleware configuration - support Railway, GitHub Pages, and local development
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -94,8 +94,6 @@ app.add_middleware(
         "http://localhost:8000",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001",
-        "https://*.hf.space",
-        "https://*.spaces.huggingface.tech",
         "https://*.github.io",  # GitHub Pages support
         "https://*.railway.app",  # Railway support
         "https://oyi77.is-a.dev",  # Main domain
@@ -181,13 +179,13 @@ async def startup():
             logger.warning(f"⚠️  Startup error (non-critical): {e}")
             await session.rollback()
 
-    # STARTUP STABILIZER: Wait for HF Space to pass health check before spawning workers
+    # STARTUP STABILIZER: Let Railway pass health checks before spawning workers.
     async def delayed_workers():
         logger.info("⏳ Stabilizer: Waiting 15s before starting background workers...")
         await asyncio.sleep(15)
 
         logger.info("🚀 Stabilizer: Spawning background workers...")
-        # Start validation worker with reduced batch size for HF
+        # Start validation worker with a conservative production batch size.
         _track_background_task(
             background_validation_worker(batch_size=20, interval_seconds=60),
             "proxy-validation-worker",
