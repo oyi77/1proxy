@@ -4,27 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useTheme } from "@/app/theme-provider";
 import { useAuth, ProtectedRoute } from "@/lib/auth-context";
-import { getFullUrl, API_URL } from "@/lib/constants";
-
-interface Source {
-  id: number;
-  url: string;
-  type: string;
-  name: string;
-  enabled: boolean;
-  validated: boolean;
-  validation_error: string | null;
-  total_scraped: number;
-  success_rate: number;
-  is_admin_source: boolean;
-}
-
-interface UserStats {
-  total_sources: number;
-  active_sources: number;
-  total_proxies_contributed: number;
-  avg_success_rate: number;
-}
+import { getFullUrl } from "@/lib/constants";
+import { api, type Source, type UserStats } from "@/lib/api";
 
 function DashboardContent() {
   const { theme } = useTheme();
@@ -32,8 +13,7 @@ function DashboardContent() {
   const [sources, setSources] = useState<Source[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || API_URL;
+  const [sourceMenuOpen, setSourceMenuOpen] = useState(false);
 
   useEffect(() => {
     loadUserData();
@@ -41,20 +21,12 @@ function DashboardContent() {
 
   const loadUserData = async () => {
     try {
-      const [sourcesRes, statsRes] = await Promise.all([
-        fetch(`${API_BASE}/api/v1/my-sources`, { credentials: "include" }),
-        fetch(`${API_BASE}/api/v1/my-stats`, { credentials: "include" })
+      const [sourcesData, statsData] = await Promise.all([
+        api.getMySources(),
+        api.getMyStats()
       ]);
-
-      if (sourcesRes.ok) {
-        const sourcesData = await sourcesRes.json();
-        setSources(sourcesData.sources || []);
-      }
-
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        setStats(statsData);
-      }
+      setSources(sourcesData);
+      setStats(statsData);
     } catch (error) {
       console.error("Error loading dashboard:", error);
     } finally {
@@ -66,16 +38,8 @@ function DashboardContent() {
     if (!confirm("Are you sure you want to delete this source?")) return;
 
     try {
-      const res = await fetch(`${API_BASE}/api/v1/my-sources/${id}`, {
-        method: "DELETE",
-        credentials: "include"
-      });
-
-      if (res.ok) {
-        setSources(sources.filter(s => s.id !== id));
-      } else {
-        alert("Failed to delete source");
-      }
+      await api.deleteMySource(id);
+      setSources(sources.filter(s => s.id !== id));
     } catch (error) {
       console.error("Error deleting source:", error);
       alert("Error deleting source");
@@ -239,19 +203,47 @@ function DashboardContent() {
             }}>
               My Sources
             </h2>
-            <Link
-              href={getFullUrl("/dashboard/add-source")}
-              className="retro-button px-6 py-3 rounded-lg font-bold"
-              style={{
-                backgroundColor: 'var(--retro-blue)',
-                color: '#FFFFFF',
-                fontFamily: "'Press Start 2P', 'Courier New', monospace",
-                border: '3px solid #000000',
-                boxShadow: '4px 4px 0px #000000'
-              }}
-            >
-              ➕ Add New Source
-            </Link>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setSourceMenuOpen((open) => !open)}
+                className="retro-button px-6 py-3 rounded-lg font-bold"
+                style={{
+                  backgroundColor: 'var(--retro-blue)',
+                  color: '#FFFFFF',
+                  fontFamily: "'Press Start 2P', 'Courier New', monospace",
+                  border: '3px solid #000000',
+                  boxShadow: '4px 4px 0px #000000'
+                }}
+              >
+                ➕ Add Source ▾
+              </button>
+              {sourceMenuOpen && (
+                <div
+                  className="absolute right-0 z-20 mt-3 w-72 rounded-xl p-3 space-y-3"
+                  style={{
+                    backgroundColor: theme === 'dark' ? 'var(--dark-card)' : '#FFFFFF',
+                    border: '3px solid #000000',
+                    boxShadow: '5px 5px 0px #000000'
+                  }}
+                >
+                  <Link
+                    href={getFullUrl("/dashboard/add-source")}
+                    className="block rounded-lg px-4 py-3 font-bold"
+                    style={{ backgroundColor: '#FFFFFF', color: '#000000', border: '2px solid #000000', fontFamily: "'Press Start 2P', 'Courier New', monospace" }}
+                  >
+                    Free community source
+                  </Link>
+                  <Link
+                    href={getFullUrl("/dashboard/add-source?premium=true")}
+                    className="block rounded-lg px-4 py-3 font-bold"
+                    style={{ backgroundColor: 'var(--retro-yellow)', color: '#000000', border: '2px solid #000000', fontFamily: "'Press Start 2P', 'Courier New', monospace" }}
+                  >
+                    ⭐ Premium source
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
 
           {sources.length === 0 ? (
@@ -265,7 +257,7 @@ function DashboardContent() {
                 You haven&apos;t added any sources yet.
               </p>
               <Link
-                href={getFullUrl("/dashboard/add-source")}
+                href={getFullUrl("/dashboard/add-source?premium=true")}
                 className="inline-block"
                 style={{
                   color: 'var(--retro-pink)',
@@ -273,7 +265,7 @@ function DashboardContent() {
                   textDecoration: 'underline'
                 }}
               >
-                Add your first source →
+                Add your first premium source →
               </Link>
             </div>
           ) : (
@@ -334,7 +326,14 @@ function DashboardContent() {
                         color: theme === 'dark' ? 'var(--dark-text)' : '#1a1a1a',
                         fontFamily: "'Press Start 2P', 'Courier New', monospace"
                       }}>
-                        {source.name}
+                        <div className="flex flex-col gap-2">
+                          <span>{source.name || source.url}</span>
+                          {source.is_paid && (
+                            <span className="w-fit px-2 py-1 rounded font-bold text-xs" style={{ backgroundColor: 'var(--retro-yellow)', color: '#000000', border: '2px solid #000000' }}>
+                              ⭐ Premium
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-4 px-4">
                         {source.validated ? (
