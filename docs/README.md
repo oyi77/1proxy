@@ -7,6 +7,7 @@ Welcome to the 1proxy documentation! This directory contains all technical docum
 ### 1. Architecture & Design
 - **[SDD.md](./SDD.md)** - Software Design Document (Complete system architecture)
 - **[MULTIUSER_ARCHITECTURE.md](./MULTIUSER_ARCHITECTURE.md)** - Multi-user platform technical design
+- **[decisions/ADR-001-reliability-premium-sources.md](./decisions/ADR-001-reliability-premium-sources.md)** - Reliability and premium-source workflow decision
 
 ### 2. Implementation Guides
 - **[FINAL_IMPLEMENTATION_REPORT.md](./FINAL_IMPLEMENTATION_REPORT.md)** - Complete implementation summary (READ THIS FIRST!)
@@ -15,7 +16,8 @@ Welcome to the 1proxy documentation! This directory contains all technical docum
 
 ### 3. Feature Documentation
 - **[INTEGRATION_SUMMARY.md](./INTEGRATION_SUMMARY.md)** - Source integration overview
-- **[SOURCES_INTEGRATION.md](./SOURCES_INTEGRATION.md)** - 10 GitHub sources technical details
+- **[SOURCES_INTEGRATION.md](./SOURCES_INTEGRATION.md)** - 20+ proxy sources technical details
+- **[research.md](./research.md)** - Reliability, source-quality, and premium-source research notes
 
 ### 4. Operations
 - **[infrastructure.md](./infrastructure.md)** - Infrastructure setup (Coming Soon)

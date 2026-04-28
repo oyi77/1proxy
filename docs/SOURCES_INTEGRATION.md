@@ -2,7 +2,7 @@
 
 ## What Was Added
 
-Integrated **10 auto-updated GitHub repositories** that refresh daily/hourly with fresh proxies:
+Integrated **20+ auto-updated GitHub repositories and raw feeds** that refresh daily/hourly with fresh proxies:
 
 ### Integrated Sources
 
@@ -15,6 +15,9 @@ Integrated **10 auto-updated GitHub repositories** that refresh daily/hourly wit
 7. **TopChina/proxy-list** - HTTP proxies (China-focused, daily updates)
 8. **officialputuid/KangProxy** - HTTP proxies (daily updates)
 9. **gfpcom/free-proxy-list** - HTTP proxies (daily updates)
+10. **Thordata/awesome-free-proxy-list** - maintained all-proxy raw feed
+11. **theriturajps/proxy-list** - hourly proxy feed
+12. **VMHeaven-Free-Proxy-Updated** - frequent HTTP feed
 
 ## New Features
 
@@ -24,6 +27,7 @@ Integrated **10 auto-updated GitHub repositories** that refresh daily/hourly wit
 - **SourceRegistry class**: Centralized registry of all proxy sources
 - **Type classification**: Auto-detects GITHUB_RAW vs SUBSCRIPTION_BASE64
 - **Enable/disable control**: Each source has an `enabled` flag
+- **Source health metadata**: background scraping updates `last_scraped`, `validated`, `validation_error`, and `success_rate`
 
 #### New API Endpoints
 
