@@ -18,11 +18,14 @@ graph TD
         FE[Next.js 15 App]
     end
 
-    subgraph "Backend (HuggingFace Spaces)"
+    subgraph "Backend (Railway)"
         API[FastAPI Service]
         VAL[Proxy Validator]
-        DB[(SQLite / PostgreSQL)]
         SCH[Background Scheduler]
+    end
+
+    subgraph "Database (Supabase)"
+        DB[(Postgres)]
     end
 
     G -->|Scrape| API
@@ -50,8 +53,8 @@ graph TD
 ## 🚀 Quick Links
 
 - **Frontend**: [https://oyi77.is-a.dev/1proxy/](https://oyi77.is-a.dev/1proxy/)
-- **Backend API**: [https://paijo77-1proxy.hf.space](https://paijo77-1proxy.hf.space)
-- **API Documentation**: [https://paijo77-1proxy.hf.space/docs](https://paijo77-1proxy.hf.space/docs)
+- **Backend API**: [https://helpful-alignment-production-2ae5.up.railway.app](https://helpful-alignment-production-2ae5.up.railway.app)
+- **API Documentation**: [https://helpful-alignment-production-2ae5.up.railway.app/docs](https://helpful-alignment-production-2ae5.up.railway.app/docs)
 
 ---
 
@@ -62,8 +65,8 @@ graph TD
 | **Frontend** | Next.js 15, TypeScript, Tailwind CSS |
 | **Backend** | FastAPI, SQLAlchemy (Async), Pydantic v2 |
 | **Validation** | aiohttp, BeautifulSoup4, Custom Scoring |
-| **Database** | SQLite (Dev) / PostgreSQL (Prod), Alembic |
-| **Deployment** | GitHub Pages (FE), HuggingFace Spaces (BE) |
+| **Database** | SQLite (Dev) / Supabase PostgreSQL (Prod), Alembic |
+| **Deployment** | GitHub Pages (FE), Railway (BE), Supabase (DB) |
 
 ---
 
@@ -113,7 +116,8 @@ sequenceDiagram
 
 ## 📖 Documentation & Maintenance
 
-- **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** - Step-by-step deployment to HF/GH.
+- **[docs/DEPLOYMENT_GUIDE.md](./docs/DEPLOYMENT_GUIDE.md)** - Short deployment runbook for GitHub Pages, Railway, and Supabase.
+- **[docs/deployment.md](./docs/deployment.md)** - Detailed environment, OAuth, and secret-rotation guidance.
 - **[LLM_CONTEXT.md](./docs/LLM_CONTEXT.md)** - 🤖 **Recommended for AI Assistants**. Machine-readable commands and context.
 - **[SDD.md](./docs/SDD.md)** - Software Design Document & API Reference.
 
