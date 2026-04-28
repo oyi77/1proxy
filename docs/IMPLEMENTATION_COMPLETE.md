@@ -92,7 +92,7 @@ Then visit:
 The platform is **fully functional** for demonstration. Optional enhancements:
 
 1. **Validator Module** - Add connectivity/anonymity validation
-2. **SQLite + Litestream** - Persistent storage with backups
+2. **Supabase Postgres** - Production persistent storage through Railway `DATABASE_URL`
 3. **WebSocket** - Real-time stats updates
 4. **Advanced Filters** - Country, anonymity level
 5. **Performance Scoring** - Latency-based ranking

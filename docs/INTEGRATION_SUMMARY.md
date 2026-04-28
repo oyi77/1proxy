@@ -288,14 +288,14 @@ Scrape all enabled sources.
 ## 🔮 Next Steps (Optional)
 
 ### Phase 1: Persistence
-- [ ] Add Redis for hot buffer
-- [ ] Add SQLite + Litestream for cold storage
-- [ ] Implement proxy validation (connectivity, anonymity)
+- [x] Add database persistence with SQLAlchemy/Alembic
+- [x] Use Supabase Postgres for production storage
+- [x] Implement proxy validation (connectivity, anonymity, quality scoring)
 
 ### Phase 2: Automation
-- [ ] Scheduled scraping (cron job every 1 hour)
+- [x] Scheduled background scraping worker
 - [ ] Auto-refresh on source updates (GitHub webhooks)
-- [ ] Dead proxy cleanup (TTL-based)
+- [x] Periodic revalidation and dead-proxy status updates
 
 ### Phase 3: Advanced Features
 - [ ] Proxy scoring (latency, success rate)
