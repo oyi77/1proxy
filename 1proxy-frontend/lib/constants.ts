@@ -7,7 +7,7 @@ export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 // Public backend API URL. GitHub Pages injects NEXT_PUBLIC_API_URL during build.
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ??
-  "https://helpful-alignment-production-2ae5.up.railway.app";
+  "https://1proxy-api.aitradepulse.com";
 
 /**
  * Ensures a path is correctly prefixed with BASE_PATH for EXTERNAL URLs only.
