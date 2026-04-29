@@ -41,7 +41,76 @@ logger = logging.getLogger(__name__)
 limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
-    title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    title="1proxy API",
+    description="""
+## Community-Driven Proxy Aggregation Platform
+
+1proxy provides a high-performance, multi-user proxy aggregation platform where anyone can contribute proxy sources while maintaining public access to all validated proxies.
+
+### Key Features
+- **Multi-Protocol Support**: HTTP, HTTPS, SOCKS4, SOCKS5, VMess, VLESS, Trojan, Shadowsocks
+- **Advanced Filtering**: Filter by protocol, country, anonymity level, quality score, speed, and validation status
+- **Quality Scoring**: 0-100 score based on latency, anonymity, Google access, and residential bonus
+- **Multi-User OAuth**: GitHub and Google authentication with role-based access control
+- **Auto-Discovery**: Hunter Protocol for automatic proxy source discovery
+- **Background Workers**: Continuous scraping and validation with configurable intervals
+- **Export Options**: Download proxies in TXT, JSON, CSV, or PAC format
+
+### Authentication
+Most endpoints are public. To contribute sources or access personal data, use OAuth login via `/auth/github` or `/auth/google`.
+Protected endpoints require a Bearer token in the `Authorization` header.
+
+### Rate Limiting
+- Public endpoints: 100 requests/hour
+- Authenticated endpoints: 60 requests/minute
+- Admin endpoints: 30 requests/minute
+
+### Contact
+- GitHub: [oyi77/1proxy](https://github.com/oyi77/1proxy)
+- API Base URL: https://1proxy-api.aitradepulse.com
+- Frontend: https://oyi77.is-a.dev/1proxy/
+""",
+    version="2.0.0",
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    contact={
+        "name": "1proxy Support",
+        "url": "https://github.com/oyi77/1proxy/issues",
+        "email": "support@1proxy.example.com",
+    },
+    license_info={
+        "name": "MIT License",
+        "url": "https://github.com/oyi77/1proxy/blob/main/LICENSE",
+    },
+    servers=[
+        {"url": "https://1proxy-api.aitradepulse.com", "description": "Production server (Railway)"},
+        {"url": "http://localhost:8000", "description": "Local development server"},
+    ],
+    tags_metadata=[
+        {
+            "name": "authentication",
+            "description": "OAuth2 authentication endpoints for GitHub and Google providers. Handle login, callbacks, and user profile access.",
+        },
+        {
+            "name": "proxies",
+            "description": "Proxy browsing, filtering, export, and testing. Public endpoints for accessing validated proxies with advanced filtering options.",
+        },
+        {
+            "name": "sources",
+            "description": "Proxy source management. Users can add, update, and monitor their own sources. Admin endpoints for global source management.",
+        },
+        {
+            "name": "validation",
+            "description": "On-demand proxy validation. Test individual proxies for connectivity, anonymity level, and quality scoring.",
+        },
+        {
+            "name": "admin",
+            "description": "Administrative endpoints for user management, platform statistics, and system health. Requires admin role.",
+        },
+        {
+            "name": "notifications",
+            "description": "User notification system. Retrieve and manage in-app notifications for source validation results and system alerts.",
+        },
+    ],
 )
 
 # Add rate limiter state

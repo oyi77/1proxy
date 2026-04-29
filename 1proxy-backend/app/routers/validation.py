@@ -25,6 +25,27 @@ class ValidateProxyResponse(BaseModel):
 
 @router.post("/proxy", response_model=ValidateProxyResponse)
 async def validate_proxy(request: ValidateProxyRequest):
+    """
+    Validate a single proxy by testing its connectivity.
+
+    Tests the provided proxy URL by attempting to connect through it
+    to a target URL (default: https://www.google.com). Returns
+    comprehensive validation results including latency, anonymity level,
+    and quality score.
+
+    - **Authentication**: Not required (public endpoint)
+    - **Rate limit**: 10 tests/minute (to prevent abuse)
+    - **Returns**: Validation results with success status and metrics
+
+    Example request:
+    ```json
+    {
+        "proxy_url": "http://192.168.1.1:8080",
+        "target_url": "https://www.google.com",
+        "timeout": 5
+    }
+    ```
+    """
     if not request.ip:
         try:
             ip_port = request.proxy_url.replace("http://", "").replace("https://", "").replace("socks4://", "").replace("socks5://", "")

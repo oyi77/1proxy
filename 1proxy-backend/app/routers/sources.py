@@ -68,6 +68,19 @@ async def get_my_stats(
     current_user: User = Depends(require_user),
     session: AsyncSession = Depends(get_db),
 ):
+    """
+    Get statistics for the current user's proxy sources.
+
+    Returns counts and metrics for the authenticated user's contributed sources:
+    - Total sources owned
+    - Active (enabled) sources
+    - Total proxies scraped from their sources
+    - Average success rate across all their sources
+
+    - **Authentication**: Required (any authenticated user)
+    - **Rate limit**: 60 requests/minute
+    - **Returns**: UserStats with counts and rates
+    """
     result = await session.execute(
         select(ProxySource).where(ProxySource.user_id == current_user.id)
     )
@@ -96,6 +109,16 @@ async def get_my_sources(
     current_user: User = Depends(require_user),
     session: AsyncSession = Depends(get_db),
 ):
+    """
+    Get all proxy sources owned by the current user.
+
+    Returns a list of all sources added by the authenticated user,
+    including validation status, success rates, and scrape counts.
+
+    - **Authentication**: Required (any authenticated user)
+    - **Rate limit**: 60 requests/minute
+    - **Returns**: List of SourceResponse objects
+    """
     result = await session.execute(
         select(ProxySource).where(ProxySource.user_id == current_user.id)
     )
@@ -114,6 +137,28 @@ async def create_source(
     current_user: User = Depends(require_user),
     session: AsyncSession = Depends(get_db),
 ):
+    """
+    Add a new proxy source.
+
+    Submits a new proxy source URL for validation. The source is immediately
+    validated (scraped for proxies) before being added. If validation
+    fails, the source is not added.
+
+    - **Authentication**: Required (any authenticated user)
+    - **Rate limit**: 10 sources/hour
+    - **Validation**: Source is tested by scraping for actual proxies
+    - **Returns**: Source details with validation results and sample proxies
+
+    Example body:
+    ```json
+    {
+        "url": "https://raw.githubusercontent.com/example/proxies/main/list.txt",
+        "type": "github_raw",
+        "name": "My Proxy List",
+        "description": "Daily updated proxy list"
+    }
+    ```
+    """
     result = await session.execute(
         select(ProxySource).where(ProxySource.url == str(source_data.url))
     )
@@ -177,6 +222,17 @@ async def update_source(
     current_user: User = Depends(require_user),
     session: AsyncSession = Depends(get_db),
 ):
+    """
+    Update an existing proxy source.
+
+    Modifies the name, description, enabled status, or paid status
+    of a source owned by the current user. Admin-protected sources
+    cannot be edited by non-admin users.
+
+    - **Authentication**: Required (owner or admin)
+    - **Rate limit**: 30 requests/minute
+    - **Returns**: Updated SourceResponse
+    """
     result = await session.execute(
         select(ProxySource).where(
             and_(ProxySource.id == source_id, ProxySource.user_id == current_user.id)
@@ -219,6 +275,17 @@ async def delete_source(
     current_user: User = Depends(require_user),
     session: AsyncSession = Depends(get_db),
 ):
+    """
+    Delete a proxy source.
+
+    Permanently removes a source owned by the current user.
+    Admin-protected sources can only be deleted by admin users.
+    This operation cannot be undone.
+
+    - **Authentication**: Required (owner or admin)
+    - **Rate limit**: 30 requests/minute
+    - **Returns**: 204 No Content on success
+    """
     result = await session.execute(
         select(ProxySource).where(
             and_(ProxySource.id == source_id, ProxySource.user_id == current_user.id)
@@ -254,6 +321,16 @@ async def admin_get_all_sources(
     current_user: User = Depends(require_admin),
     session: AsyncSession = Depends(get_db),
 ):
+    """
+    Admin: Get all proxy sources in the system.
+
+    Returns a paginated list of ALL proxy sources from all users.
+    Only accessible to admin users.
+
+    - **Authentication**: Required (admin role)
+    - **Rate limit**: 30 requests/minute
+    - **Returns**: Paginated list of all sources with owner info
+    """
     from sqlalchemy import func
 
     total_result = await session.execute(select(func.count()).select_from(ProxySource))
@@ -287,6 +364,15 @@ async def admin_protect_source(
     current_user: User = Depends(require_admin),
     session: AsyncSession = Depends(get_db),
 ):
+    """
+    Admin: Protect a source from user deletion.
+
+    Marks a source as admin-protected, preventing regular users
+    from editing or deleting it. Useful for curated/official sources.
+
+    - **Authentication**: Required (admin role)
+    - **Returns**: Updated SourceResponse with is_admin_source=True
+    """
     result = await session.execute(
         select(ProxySource).where(ProxySource.id == source_id)
     )

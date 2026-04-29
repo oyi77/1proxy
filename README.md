@@ -133,6 +133,11 @@ alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
+After starting the backend, visit:
+- **Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **ReDoc**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
+- **OpenAPI Spec**: [http://localhost:8000/api/v1/openapi.json](http://localhost:8000/api/v1/openapi.json)
+
 ### Frontend Setup
 ```bash
 cd 1proxy-frontend

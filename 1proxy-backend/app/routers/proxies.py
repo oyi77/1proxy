@@ -85,6 +85,22 @@ async def get_proxies_advanced(
     offset: int = Query(0, ge=0, description="Offset for pagination"),
     session: AsyncSession = Depends(get_db),
 ):
+    """
+    Advanced proxy search with comprehensive filtering options.
+
+    Public endpoint that returns validated proxies matching the specified criteria.
+    Supports filtering by protocol, country, anonymity level, quality score,
+    speed, latency, and validation status. Results can be sorted by various fields.
+
+    - **Authentication**: Not required (public endpoint)
+    - **Rate limit**: 100 requests/hour
+    - **Returns**: Paginated list of proxies with full metadata
+
+    Examples:
+    - `/api/v1/proxies/advanced?protocol=socks5&min_quality=80&limit=10`
+    - `/api/v1/proxies/advanced?country_code=US&anonymity=elite`
+    - `/api/v1/proxies/advanced?order_by=latency_ms&order_direction=asc`
+    """
     proxies, total = await db_storage.get_proxies(
         session=session,
         protocol=protocol,
@@ -139,6 +155,16 @@ async def get_proxies_advanced(
 
 @router.get("/proxies/filters/options")
 async def get_filter_options(session: AsyncSession = Depends(get_db)):
+    """
+    Get available filter options for the proxy search UI.
+
+    Returns distinct values for protocols, countries, anonymity levels,
+    proxy types, and quality ranges. Use this to populate filter dropdowns
+    in the frontend.
+
+    - **Authentication**: Not required (public endpoint)
+    - **Returns**: Lists of available filter options with counts
+    """
     from sqlalchemy import select, func, distinct
     from app.db_models import Proxy
 
@@ -197,6 +223,25 @@ async def export_proxies(
     limit: int = Query(1000, ge=1, le=10000),
     session: AsyncSession = Depends(get_db),
 ):
+    """
+    Export proxies in various formats for easy integration.
+
+    Download proxies in plain text (one URL per line), JSON, CSV,
+    or PAC (Proxy Auto-Configuration) format. The PAC format can be
+    directly used in browser proxy settings for automatic proxy rotation.
+
+    - **Authentication**: Not required (public endpoint)
+    - **Rate limit**: 100 exports/hour
+    - **Formats**:
+      - `txt`: Plain text, one proxy URL per line
+      - `json`: JSON array with full proxy metadata
+      - `csv`: CSV file with columns (URL, Protocol, Country, etc.)
+      - `pac`: PAC file for browser auto-configuration
+
+    Examples:
+    - `/api/v1/proxies/export?format=txt&protocol=socks5&min_quality=70`
+    - `/api/v1/proxies/export?format=csv&country_code=US`
+    """
     from fastapi.responses import PlainTextResponse, StreamingResponse
     import json
     import io
@@ -322,13 +367,19 @@ async def get_random_proxy(
     """
     Get a random high-quality proxy with smart filtering.
 
+    Returns a single random proxy matching the specified criteria.
     Use the 'exclude' parameter to implement rotation by excluding
-    previously used IPs. This ensures you get different proxies
-    on each request.
+    previously used IPs. This ensures you get different proxies on each request.
 
-    Example: /proxies/random?min_quality=70&exclude=192.168.1.1,10.0.0.1
+    - **Authentication**: Not required (public endpoint)
+    - **Rate limit**: 100 requests/hour
+    - **Tip**: Combine with `min_quality` for reliable proxies
+
+    Examples:
+    - `/api/v1/proxies/random?min_quality=70`
+    - `/api/v1/proxies/random?protocol=socks5&country_code=US`
+    - `/api/v1/proxies/random?exclude=192.168.1.1,10.0.0.1`
     """
-
     # Parse exclude list
     excluded_ips = set()
     if exclude:
@@ -758,6 +809,16 @@ async def delete_proxy(
     session: AsyncSession = Depends(get_db),
     admin_user=Depends(require_admin),
 ):
+    """
+    Delete a proxy from the database.
+
+    Permanently removes a proxy by its ID. This operation cannot be undone.
+    Only available to admin users.
+
+    - **Authentication**: Required (admin role)
+    - **Rate limit**: 30 requests/minute
+    - **Returns**: 204 No Content on success
+    """
     success = await db_storage.delete_proxy(session, proxy_id)
     if not success:
         raise HTTPException(status_code=404, detail="Proxy not found")

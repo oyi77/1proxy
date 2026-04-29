@@ -49,6 +49,15 @@ async def get_notifications(
     unread_only: bool = False,
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Get notifications for the current user.
+
+    Returns notifications for the authenticated user.
+    Optionally filter to only unread notifications.
+
+    - **Authentication**: Required (any authenticated user)
+    - **Returns**: List of notifications
+    """
     return await db_storage.get_notifications(
         db, user_id=current_user.id, unread_only=unread_only
     )
@@ -60,6 +69,15 @@ async def mark_notification_read(
     current_user: User = Depends(require_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Mark a notification as read.
+
+    Marks a specific notification as read for the current user.
+    Only the notification owner can mark it as read.
+
+    - **Authentication**: Required (owner)
+    - **Returns**: Success message
+    """
     success = await db_storage.mark_notification_read(
         db, user_id=current_user.id, notification_id=notification_id
     )
@@ -73,5 +91,14 @@ async def mark_notification_read(
 async def mark_all_read(
     current_user: User = Depends(require_user), db: AsyncSession = Depends(get_db)
 ):
+    """
+    Mark all notifications as read.
+
+    Marks all notifications for the current user as read.
+    Useful for clearing all unread notifications at once.
+
+    - **Authentication**: Required (any authenticated user)
+    - **Returns**: Success message with count of marked notifications
+    """
     count = await db_storage.mark_all_notifications_read(db, user_id=current_user.id)
     return {"message": f"Marked {count} notifications as read"}

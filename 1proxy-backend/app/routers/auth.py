@@ -77,6 +77,16 @@ async def get_current_user_info(
     request: Request,
     current_user: Optional[User] = Depends(get_current_user),
 ):
+    """
+    Get current authenticated user information.
+
+    Returns the profile information for the currently logged-in user based on the
+    access token cookie. If no valid token is present, returns 401 Unauthorized.
+
+    - **Authentication**: Required (cookie-based, set via OAuth login)
+    - **Rate limit**: 60 requests/minute
+    - **Returns**: User profile with id, email, username, avatar, and role
+    """
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
@@ -92,6 +102,18 @@ async def get_current_user_info(
 @router.get("/github")
 @limiter.limit("10/minute")
 async def github_login(request: Request):
+    """
+    Initiate GitHub OAuth login flow.
+
+    Redirects the user to GitHub's OAuth authorization page where they can
+    grant access to their GitHub account. After authorization, GitHub will
+    redirect back to the callback URL with an authorization code.
+
+    - **Authentication**: Not required (this is the login endpoint)
+    - **Rate limit**: 10 requests/minute
+    - **Scope**: user:email (access to user's email address)
+    - **Returns**: Redirect to GitHub OAuth page
+    """
     return RedirectResponse(
         url=f"https://github.com/login/oauth/authorize?client_id={settings.GITHUB_CLIENT_ID}&scope=user:email"
     )
@@ -105,6 +127,19 @@ async def github_callback(
     response: Response,
     session: AsyncSession = Depends(get_db),
 ):
+    """
+    Handle GitHub OAuth callback.
+
+    Processes the authorization code received from GitHub after user grants access.
+    Exchanges the code for an access token, creates or retrieves the user account,
+    and sets an HTTP-only cookie with the JWT access token.
+
+    - **Authentication**: Not required (this completes the login flow)
+    - **Rate limit**: 20 requests/minute
+    - **Query params**: `code` (authorization code from GitHub)
+    - **Returns**: Redirect to dashboard on success, or login page with error
+    - **Side effects**: Sets `access_token` cookie, creates user if new
+    """
     try:
         user, token = await oauth_handler.github_callback(code, session)
         await log_usage(
@@ -132,6 +167,18 @@ async def github_callback(
 @router.get("/google")
 @limiter.limit("10/minute")
 async def google_login(request: Request):
+    """
+    Initiate Google OAuth login flow.
+
+    Redirects the user to Google's OAuth authorization page where they can
+    grant access to their Google account. After authorization, Google will
+    redirect back to the callback URL with an authorization code.
+
+    - **Authentication**: Not required (this is the login endpoint)
+    - **Rate limit**: 10 requests/minute
+    - **Scope**: openid email profile
+    - **Returns**: Redirect to Google OAuth page
+    """
     google_client_id = settings.GOOGLE_CLIENT_ID
     redirect_uri = f"{settings.API_URL}/auth/google/callback"
 
@@ -152,6 +199,19 @@ async def google_callback(
     response: Response,
     session: AsyncSession = Depends(get_db),
 ):
+    """
+    Handle Google OAuth callback.
+
+    Processes the authorization code received from Google after user grants access.
+    Exchanges the code for an access token, creates or retrieves the user account,
+    and sets an HTTP-only cookie with the JWT access token.
+
+    - **Authentication**: Not required (this completes the login flow)
+    - **Rate limit**: 20 requests/minute
+    - **Query params**: `code` (authorization code from Google)
+    - **Returns**: Redirect to dashboard on success, or login page with error
+    - **Side effects**: Sets `access_token` cookie, creates user if new
+    """
     try:
         redirect_uri = f"{settings.API_URL}/auth/google/callback"
         user, token = await oauth_handler.google_callback(code, redirect_uri, session)
@@ -180,6 +240,17 @@ async def google_callback(
 @router.post("/logout")
 @limiter.limit("30/minute")
 async def logout(request: Request, response: Response):
+    """
+    Logout the current user.
+
+    Clears the `access_token` cookie, effectively logging the user out.
+    The client should also remove any stored tokens on their side.
+
+    - **Authentication**: Required (cookie-based)
+    - **Rate limit**: 30 requests/minute
+    - **Returns**: Success message
+    - **Side effects**: Deletes `access_token` cookie
+    """
     response = Response(content={"message": "Logged out successfully"})
     response.delete_cookie(key="access_token")
     return response

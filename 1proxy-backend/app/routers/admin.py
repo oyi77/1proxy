@@ -45,6 +45,16 @@ async def list_users(
     offset: int = Query(0, ge=0),
     session: AsyncSession = Depends(get_db),
 ):
+    """
+    Admin: List all registered users.
+
+    Returns a paginated list of all users in the system
+    with their roles and creation dates.
+
+    - **Authentication**: Required (admin role)
+    - **Rate limit**: 30 requests/minute
+    - **Returns**: Paginated list of users
+    """
     users, total = await db_storage.get_users(session, limit=limit, offset=offset)
     return {
         "total": total,
@@ -69,6 +79,15 @@ async def list_users(
 async def get_user_details(
     request: Request, user_id: int, session: AsyncSession = Depends(get_db)
 ):
+    """
+    Admin: Get detailed information about a specific user.
+
+    Returns full user profile including role and creation date.
+
+    - **Authentication**: Required (admin role)
+    - **Rate limit**: 60 requests/minute
+    - **Returns**: UserResponse with user details
+    """
     user = await db_storage.get_user_by_id(session, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -83,6 +102,17 @@ async def update_user_role(
     role_data: UserUpdateRole,
     session: AsyncSession = Depends(get_db),
 ):
+    """
+    Admin: Update a user's role.
+
+    Change a user's role between "user" and "admin".
+    Only admins can perform this action.
+
+    - **Authentication**: Required (admin role)
+    - **Rate limit**: 10 requests/minute
+    - **Valid roles**: "user", "admin"
+    - **Returns**: Updated UserResponse
+    """
     if role_data.role not in ["user", "admin"]:
         raise HTTPException(status_code=400, detail="Invalid role")
 
@@ -97,6 +127,16 @@ async def update_user_role(
 async def delete_user(
     request: Request, user_id: int, session: AsyncSession = Depends(get_db)
 ):
+    """
+    Admin: Delete a user from the system.
+
+    Permanently removes a user and all their associated data.
+    Cannot delete yourself (self-deletion prevention).
+
+    - **Authentication**: Required (admin role)
+    - **Rate limit**: 5 requests/minute
+    - **Returns**: Success message
+    """
     # Prevent self-deletion if current user is the target
     # This would require current_user from dependency, but we'll stick to basic admin check for now
     success = await db_storage.delete_user(session, user_id)
@@ -192,6 +232,16 @@ async def approve_candidate(
 async def get_validation_stats(
     request: Request, session: AsyncSession = Depends(get_db)
 ):
+    """
+    Admin: Get proxy validation statistics.
+
+    Returns counts and averages grouped by validation status,
+    plus a summary with validation rate percentage.
+
+    - **Authentication**: Required (admin role)
+    - **Rate limit**: 60 requests/minute
+    - **Returns**: Validation stats by status and summary
+    """
     result = await session.execute(
         select(
             Proxy.validation_status,
@@ -235,6 +285,19 @@ async def get_validation_stats(
 async def get_quality_distribution(
     request: Request, session: AsyncSession = Depends(get_db)
 ):
+    """
+    Admin: Get quality score distribution of validated proxies.
+
+    Returns count of proxies in each quality bracket:
+    - Excellent (80-100)
+    - Good (60-79)
+    - Fair (40-59)
+    - Poor (0-39)
+
+    - **Authentication**: Required (admin role)
+    - **Rate limit**: 60 requests/minute
+    - **Returns**: Distribution counts by quality bracket
+    """
     result = await session.execute(
         select(Proxy.quality_score, func.count(Proxy.id).label("count"))
         .where(Proxy.validation_status == "validated")
@@ -268,6 +331,16 @@ async def get_quality_distribution(
 async def get_recent_validations(
     request: Request, limit: int = 20, session: AsyncSession = Depends(get_db)
 ):
+    """
+    Admin: Get recently validated proxies.
+
+    Returns a list of proxies sorted by most recently validated.
+    Useful for monitoring validation activity and quality trends.
+
+    - **Authentication**: Required (admin role)
+    - **Rate limit**: 60 requests/minute
+    - **Returns**: List of recently validated proxies with scores
+    """
     result = await session.execute(
         select(Proxy)
         .where(Proxy.last_validated.isnot(None))
