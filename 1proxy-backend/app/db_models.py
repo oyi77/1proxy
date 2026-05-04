@@ -97,6 +97,8 @@ class Proxy(Base):
     validation_failures = Column(Integer, default=0)
     is_working = Column(Boolean, default=True, index=True)
 
+    priority_tier = Column(Integer, default=3, nullable=False, index=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -115,6 +117,11 @@ class Proxy(Base):
             "is_working",
             "validation_status",
             "quality_score",
+        ),
+        Index(
+            "idx_proxy_tier_validated",
+            "priority_tier",
+            "last_validated",
         ),
     )
 

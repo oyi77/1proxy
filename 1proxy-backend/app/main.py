@@ -27,6 +27,7 @@ from app.admin.scraping_admin import router as scraping_admin_router
 from app.dependencies import require_admin
 from app.db_models import User
 from app.background_validator import background_validation_worker
+from app.lifecycle_workers import revalidation_worker, cleanup_worker, priority_tier_worker
 from app.metrics import metrics_app
 import asyncio
 import logging
@@ -217,9 +218,15 @@ grabber = GitHubGrabber()
 
 
 def _track_background_task(coro, name: str):
+    def _on_done(task: asyncio.Task):
+        app.state.background_tasks.discard(task)
+        if task.cancelled():
+            logger.info(f"⏹️  Background task cancelled: {name}")
+        elif exc := task.exception():
+            logger.error(f"💥 Background task crashed: {name} — {exc}")
     task = asyncio.create_task(coro, name=name)
     app.state.background_tasks.add(task)
-    task.add_done_callback(app.state.background_tasks.discard)
+    task.add_done_callback(_on_done)
     return task
 
 
@@ -268,6 +275,18 @@ async def startup():
         )
         _track_background_task(
             database_keepalive_worker(interval_seconds=300), "database-keepalive-worker"
+        )
+        _track_background_task(
+            revalidation_worker(batch_size=20, interval_seconds=60),
+            "proxy-revalidation-worker",
+        )
+        _track_background_task(
+            cleanup_worker(interval_minutes=30),
+            "proxy-cleanup-worker",
+        )
+        _track_background_task(
+            priority_tier_worker(interval_hours=6),
+            "proxy-tier-worker",
         )
         logger.info("✅ Stabilizer: Background workers active")
 

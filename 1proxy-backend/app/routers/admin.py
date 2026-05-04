@@ -9,6 +9,7 @@ from app.hunter.service import HunterService
 from app.db_storage import db_storage
 from typing import List, Optional
 from pydantic import BaseModel
+from datetime import datetime, timedelta
 
 # All admin endpoints require admin role
 router = APIRouter(
@@ -405,3 +406,96 @@ async def seed_sources(request: Request, session: AsyncSession = Depends(get_db)
 
     await session.commit()
     return {"message": f"Seeded {count} sources"}
+
+
+@router.post("/cleanup/purge-failed", summary="Purge 3-strike failed proxies")
+async def purge_failed_proxies(admin_user=Depends(require_admin), session: AsyncSession = Depends(get_db)):
+    count = await db_storage.purge_3strike_proxies(session)
+    return {"deleted": count, "message": f"Purged {count} failed proxies (3+ strikes)"}
+
+
+@router.post("/cleanup/purge-unseen", summary="Purge proxies not seen in N days")
+async def purge_unseen_proxies(
+    days: int = Query(14, ge=1, le=90, description="Delete proxies not seen in N days"),
+    admin_user=Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+):
+    count = await db_storage.purge_unseen_proxies(session, days=days)
+    return {"deleted": count, "days": days, "message": f"Purged {count} proxies not seen in {days} days"}
+
+
+@router.post("/cleanup/purge-stale-pending", summary="Purge old pending proxies")
+async def purge_stale_pending_proxies(
+    days: int = Query(7, ge=1, le=30, description="Delete pending proxies older than N days"),
+    admin_user=Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+):
+    count = await db_storage.purge_stale_pending(session, days=days)
+    return {"deleted": count, "days": days, "message": f"Purged {count} stale pending proxies"}
+
+
+@router.post("/cleanup/enforce-cap", summary="Enforce database proxy cap")
+async def enforce_db_cap(
+    soft_cap: int = Query(50000, ge=10000, le=200000, description="Soft cap threshold"),
+    hard_cap: int = Query(75000, ge=20000, le=300000, description="Hard cap threshold"),
+    admin_user=Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+):
+    count = await db_storage.enforce_db_cap(session, soft_cap=soft_cap, hard_cap=hard_cap)
+    return {"deleted": count, "soft_cap": soft_cap, "hard_cap": hard_cap}
+
+
+@router.post("/cleanup/recalc-tiers", summary="Recalculate priority tiers")
+async def recalc_priority_tiers(admin_user=Depends(require_admin), session: AsyncSession = Depends(get_db)):
+    count = await db_storage.update_priority_tiers(session)
+    return {"updated": count, "message": f"Updated priority tiers for {count} proxies"}
+
+
+@router.get("/lifecycle/stats", summary="Get proxy lifecycle statistics")
+async def get_lifecycle_stats(session: AsyncSession = Depends(get_db)):
+    from sqlalchemy import text, func as sa_func
+    from app.db_models import Proxy
+    from datetime import datetime, timedelta
+
+    now = datetime.utcnow()
+
+    # Total by tier
+    tier_result = await session.execute(
+        select(Proxy.priority_tier, sa_func.count(Proxy.id))
+        .group_by(Proxy.priority_tier)
+        .order_by(Proxy.priority_tier)
+    )
+    by_tier = {f"tier_{row[0]}": row[1] for row in tier_result.all()}
+
+    # Freshness
+    fresh_3h = await session.execute(
+        select(sa_func.count(Proxy.id)).where(
+            Proxy.is_working == True,
+            Proxy.last_validated >= now - timedelta(hours=3)
+        )
+    )
+    stale_3h_12h = await session.execute(
+        select(sa_func.count(Proxy.id)).where(
+            Proxy.is_working == True,
+            Proxy.last_validated >= now - timedelta(hours=12),
+            Proxy.last_validated < now - timedelta(hours=3)
+        )
+    )
+    stale_12h_plus = await session.execute(
+        select(sa_func.count(Proxy.id)).where(
+            Proxy.is_working == True,
+            Proxy.last_validated < now - timedelta(hours=12)
+        )
+    )
+
+    total = await session.execute(select(sa_func.count(Proxy.id)))
+
+    return {
+        "total": total.scalar(),
+        "by_tier": by_tier,
+        "freshness": {
+            "fresh_under_3h": fresh_3h.scalar(),
+            "aging_3h_12h": stale_3h_12h.scalar(),
+            "stale_over_12h": stale_12h_plus.scalar(),
+        },
+    }
