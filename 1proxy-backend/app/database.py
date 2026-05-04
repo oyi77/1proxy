@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import ssl
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
@@ -29,6 +30,11 @@ engine_kwargs = {
 
 # SQLite doesn't support connection pooling, only add pool settings for PostgreSQL
 if DATABASE_URL.startswith("postgresql"):
+    # Create SSL context for Supabase (requires SSL for pooler connections)
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+
     engine_kwargs.update(
         {
             "pool_size": 20,  # Number of permanent connections
@@ -37,7 +43,8 @@ if DATABASE_URL.startswith("postgresql"):
             "pool_recycle": 3600,  # Recycle connections after 1 hour
             "pool_timeout": 30,  # Wait max 30s for connection from pool
             "connect_args": {
-                "statement_cache_size": 0  # Disable prepared statements for PgBouncer compatibility
+                "ssl": ssl_context,
+                "statement_cache_size": 0,  # Disable prepared statements for PgBouncer compatibility
             },
         }
     )
