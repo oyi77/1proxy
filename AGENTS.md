@@ -1,3 +1,5 @@
+<!-- Parent: ../AGENTS.md -->
+
 # 1PROXY PROJECT KNOWLEDGE BASE
 
 **Generated:** 2026-01-16 03:12 AM  
