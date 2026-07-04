@@ -54,16 +54,12 @@ async def scrape_enabled_sources_once(session) -> dict:
 
             source = SourceConfig(url=source_db.url, type=SourceType(source_db.type))
 
-            # GENERIC_TEXT sources may require HTML parsing and link crawling
-            # which can be memory-expensive in constrained environments.
-            if source.type == SourceType.GENERIC_TEXT:
-                logger.info(
-                    f"⏭️  Skipping generic source in background scraper: {source_db.url}"
-                )
-                continue
-
+            # GENERIC_TEXT sources use WebGrabber for HTML parsing
+            # They may be slower but provide fresh proxies from web tables
             if source.type == SourceType.GENERIC_TEXT:
                 grabber = WebGrabber()
+            elif source.type == SourceType.GITHUB_RAW:
+                grabber = GitHubGrabber()
             else:
                 grabber = GitHubGrabber()
 
