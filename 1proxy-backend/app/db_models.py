@@ -88,6 +88,7 @@ class Proxy(Base):
     isp = Column(String(200), nullable=True)
     org = Column(String(200), nullable=True)
     can_access_google = Column(Boolean, nullable=True)
+    can_access_openai = Column(Boolean, nullable=True)
     quality_score = Column(Integer, nullable=True, index=True)
 
     validation_status = Column(

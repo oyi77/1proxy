@@ -30,6 +30,7 @@ class ValidationResult(BaseModel):
     latency_ms: Optional[int] = None
     anonymity: Optional[str] = None
     can_access_google: Optional[bool] = None
+    can_access_openai: Optional[bool] = None
     country_code: Optional[str] = None
     country_name: Optional[str] = None
     proxy_type: Optional[str] = None
@@ -37,7 +38,6 @@ class ValidationResult(BaseModel):
     org: Optional[str] = None
     quality_score: Optional[int] = None
     error_message: Optional[str] = None
-
 
 class ProxyValidator:
     def __init__(self, timeout: int = 10, max_concurrent: int = 20):
@@ -120,6 +120,17 @@ class ProxyValidator:
         except Exception:
             return False
 
+    async def test_openai_access(self, proxy_url: str) -> bool:
+        """Test if proxy can access OpenAI API"""
+        try:
+            async with aiohttp.ClientSession(timeout=self.timeout) as session:
+                async with session.get(
+                    "https://api.openai.com/v1/models", proxy=proxy_url, ssl=False
+                ) as resp:
+                    return resp.status == 200
+        except Exception:
+            return False
+
     async def get_geo_info(self, ip: str) -> Dict[str, Optional[str]]:
         try:
             async with aiohttp.ClientSession(timeout=self.timeout) as session:
@@ -184,6 +195,7 @@ class ProxyValidator:
         latency_ms: Optional[int],
         anonymity: Optional[str],
         can_access_google: Optional[bool],
+        can_access_openai: Optional[bool],
         proxy_type: Optional[str],
     ) -> int:
         score = 0
@@ -206,7 +218,10 @@ class ProxyValidator:
             score += 5
 
         if can_access_google:
-            score += 15
+            score += 10
+
+        if can_access_openai:
+            score += 10
 
         if proxy_type == "residential":
             score += 15
@@ -224,6 +239,7 @@ class ProxyValidator:
         results = await asyncio.gather(
             self.check_anonymity(proxy_url),
             self.test_google_access(proxy_url),
+            self.test_openai_access(proxy_url),
             self.get_geo_info(ip),
             self.detect_proxy_type(ip),
             return_exceptions=True,
@@ -233,17 +249,20 @@ class ProxyValidator:
         can_access_google = (
             results[1] if not isinstance(results[1], Exception) else None
         )
-        geo_info = results[2] if not isinstance(results[2], Exception) else {}
+        can_access_openai = (
+            results[2] if not isinstance(results[2], Exception) else None
+        )
+        geo_info = results[3] if not isinstance(results[3], Exception) else {}
         type_info = (
-            results[3]
-            if not isinstance(results[3], Exception)
+            results[4]
+            if not isinstance(results[4], Exception)
             else {"proxy_type": "unknown"}
         )
 
         proxy_type = type_info.get("proxy_type", "unknown")
 
         quality_score = await self.calculate_quality_score(
-            latency_ms, anonymity, can_access_google, proxy_type
+            latency_ms, anonymity, can_access_google, can_access_openai, proxy_type
         )
 
         return ValidationResult(
@@ -251,6 +270,7 @@ class ProxyValidator:
             latency_ms=latency_ms,
             anonymity=anonymity,
             can_access_google=can_access_google,
+            can_access_openai=can_access_openai,
             country_code=geo_info.get("country_code"),
             country_name=geo_info.get("country_name"),
             proxy_type=proxy_type,

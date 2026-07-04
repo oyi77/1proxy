@@ -112,6 +112,7 @@ class DatabaseStorage:
                     "latency_ms": validation_result.latency_ms,
                     "anonymity": validation_result.anonymity,
                     "can_access_google": validation_result.can_access_google,
+                    "can_access_openai": validation_result.can_access_openai,
                     "country_code": validation_result.country_code,
                     "country_name": validation_result.country_name,
                     "proxy_type": validation_result.proxy_type,
@@ -169,6 +170,8 @@ class DatabaseStorage:
                             "validation_status", "pending"
                         ),
                         "last_validated": proxy_data.get("last_validated"),
+                        "can_access_google": proxy_data.get("can_access_google"),
+                        "can_access_openai": proxy_data.get("can_access_openai"),
                         "first_seen": now,
                         "last_seen": now,
                         "created_at": now,

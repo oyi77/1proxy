@@ -15,13 +15,28 @@ from app.db_models import UsageLog, ProxyPerformanceHistory, SourceTrustScore
 from unittest.mock import MagicMock
 from fastapi.testclient import TestClient
 from app.main import app
-
-
 @pytest.fixture
 def client():
     with TestClient(app) as c:
         yield c
 
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_db():
+    """Create test database tables before running integration tests."""
+    import asyncio
+    from app.database import engine, Base
+    
+    async def create_tables():
+        async with engine.begin() as conn:
+            # Drop all tables and recreate to ensure schema is up to date
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+    
+    asyncio.run(create_tables())
+    yield
+    # Cleanup
+    asyncio.run(engine.dispose())
 
 @pytest.fixture
 def mock_prometheus(monkeypatch):

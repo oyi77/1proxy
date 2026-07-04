@@ -271,6 +271,8 @@ async def export_proxies(
                 "latency_ms": proxy.latency_ms,
                 "anonymity": proxy.anonymity,
                 "quality_score": proxy.quality_score,
+                "can_access_google": proxy.can_access_google,
+                "can_access_openai": proxy.can_access_openai,
             }
             for proxy in proxies
         ]
@@ -284,7 +286,16 @@ async def export_proxies(
         output = io.StringIO()
         writer = csv.writer(output)
         writer.writerow(
-            ["URL", "Protocol", "Country", "Latency(ms)", "Anonymity", "Quality"]
+            [
+                "URL",
+                "Protocol",
+                "Country",
+                "Latency(ms)",
+                "Anonymity",
+                "Quality",
+                "Google",
+                "OpenAI",
+            ]
         )
 
         for proxy in proxies:
@@ -296,6 +307,8 @@ async def export_proxies(
                     proxy.latency_ms or "",
                     proxy.anonymity or "",
                     proxy.quality_score or "",
+                    "Yes" if proxy.can_access_google else "No",
+                    "Yes" if proxy.can_access_openai else "No",
                 ]
             )
 

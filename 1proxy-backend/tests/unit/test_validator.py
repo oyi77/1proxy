@@ -372,9 +372,11 @@ class TestProxyValidator:
             latency_ms=50,
             anonymity="elite",
             can_access_google=True,
+            can_access_openai=True,
             proxy_type="residential",
         )
-        assert score == 100  # 40 + 30 + 15 + 15 = 100
+        # 40 (latency) + 30 (elite) + 10 (google) + 10 (openai) + 15 (residential) = 105 -> capped at 100
+        assert score == 100
 
     @pytest.mark.asyncio
     async def test_calculate_quality_score_good(self, validator):
@@ -383,9 +385,11 @@ class TestProxyValidator:
             latency_ms=300,
             anonymity="anonymous",
             can_access_google=True,
+            can_access_openai=True,
             proxy_type="datacenter",
         )
-        assert score == 70  # 30 + 20 + 15 + 5 = 70
+        # 30 (latency) + 20 (anonymous) + 10 (google) + 10 (openai) + 5 (datacenter) = 75
+        assert score == 75
 
     @pytest.mark.asyncio
     async def test_calculate_quality_score_poor(self, validator):
@@ -394,15 +398,17 @@ class TestProxyValidator:
             latency_ms=1500,
             anonymity="transparent",
             can_access_google=False,
+            can_access_openai=False,
             proxy_type="unknown",
         )
-        assert score == 15  # 10 + 5 + 0 + 0 = 15
+        # 10 (latency) + 5 (transparent) + 0 + 0 + 0 = 15
+        assert score == 15
 
     @pytest.mark.asyncio
     async def test_calculate_quality_score_minimal(self, validator):
         """Test quality score with minimal data"""
         score = await validator.calculate_quality_score(
-            latency_ms=None, anonymity=None, can_access_google=None, proxy_type=None
+            latency_ms=None, anonymity=None, can_access_google=None, can_access_openai=None, proxy_type=None
         )
         assert score == 0
 
@@ -413,6 +419,7 @@ class TestProxyValidator:
             latency_ms=10,
             anonymity="elite",
             can_access_google=True,
+            can_access_openai=True,
             proxy_type="residential",
         )
         assert score <= 100
