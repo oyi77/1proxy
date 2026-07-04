@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, delete
+from sqlalchemy import select, func, and_, delete, or_
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from datetime import datetime, timedelta
@@ -399,9 +399,15 @@ class DatabaseStorage:
             conditions.append(Proxy.validation_status == validation_status)
 
         # Add TTL filter - only show proxies validated within stale_cutoff_hours
+        # Include proxies with NULL last_validated (never validated but working)
         if is_working:
             cutoff = datetime.utcnow() - timedelta(hours=stale_cutoff_hours)
-            conditions.append(Proxy.last_validated >= cutoff)
+            conditions.append(
+                or_(
+                    Proxy.last_validated >= cutoff,
+                    Proxy.last_validated.is_(None)
+                )
+            )
 
         query = (
             select(Proxy).options(selectinload(Proxy.source)).where(and_(*conditions))

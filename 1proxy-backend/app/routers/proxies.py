@@ -216,7 +216,7 @@ async def get_filter_options(session: AsyncSession = Depends(get_db)):
 @limiter.limit("100/hour")  # Rate limit: 100 exports per hour
 async def export_proxies(
     request: Request,
-    format: str = Query("txt", description="Export format: txt, json, csv, pac"),
+    format: str = Query("txt", description="Export format: txt, json, csv, pac, sing-box, clash"),
     protocol: Optional[str] = None,
     country_code: Optional[str] = None,
     min_quality: Optional[int] = None,
@@ -255,6 +255,7 @@ async def export_proxies(
         limit=limit,
         offset=0,
         order_by="quality_score",
+        stale_cutoff_hours=8760,  # 1 year - effectively disable TTL filter for exports
     )
 
     if format == "txt":
@@ -346,7 +347,106 @@ async def export_proxies(
             headers={"Content-Disposition": "attachment; filename=1proxy.pac"},
         )
 
-    return {"error": "Invalid format. Supported: txt, json, csv, pac"}
+    elif format == "sing-box":
+        # Generate Sing-box configuration (JSON)
+        # https://sing-box.sagernet.org/configuration/
+        outbounds = []
+        for i, proxy in enumerate(proxies[:50]):  # Limit to top 50
+            if proxy.protocol.lower() in ["http", "https"]:
+                outbound = {
+                    "type": "http",
+                    "tag": f"1proxy-{i+1}",
+                    "server": proxy.ip or "",
+                    "server_port": proxy.port or 8080,
+                }
+                # Add auth if available (not in current model)
+            elif proxy.protocol.lower() in ["socks4", "socks5"]:
+                outbound = {
+                    "type": "socks",
+                    "tag": f"1proxy-{i+1}",
+                    "server": proxy.ip or "",
+                    "server_port": proxy.port or 1080,
+                    "version": "5" if proxy.protocol.lower() == "socks5" else "4",
+                }
+            else:
+                continue
+            outbounds.append(outbound)
+
+        # Add direct outbound as fallback
+        outbounds.append({"type": "direct", "tag": "direct"})
+
+        config = {
+            "outbounds": outbounds,
+            "route": {
+                "rules": [
+                    {
+                        "type": "geoip",
+                        "geoip": ["private"],
+                        "outbound": "direct"
+                    }
+                ],
+                "final": "1proxy-1" if outbounds else "direct"
+            }
+        }
+
+        return PlainTextResponse(
+            content=json.dumps(config, indent=2),
+            media_type="application/json",
+            headers={"Content-Disposition": "attachment; filename=1proxy_sing-box.json"},
+        )
+
+    elif format == "clash":
+        # Generate Clash configuration (YAML)
+        # https://github.com/Dreamacro/clash/wiki/Configuration
+        import yaml
+
+        proxies_list = []
+        proxy_names = []
+        for i, proxy in enumerate(proxies[:50]):  # Limit to top 50
+            if proxy.protocol.lower() in ["http", "https"]:
+                proxy_names.append(f"1proxy-{i+1}")
+                proxies_list.append({
+                    "name": f"1proxy-{i+1}",
+                    "type": "http",
+                    "server": proxy.ip or "",
+                    "port": proxy.port or 8080,
+                })
+            elif proxy.protocol.lower() in ["socks4", "socks5"]:
+                proxy_names.append(f"1proxy-{i+1}")
+                proxies_list.append({
+                    "name": f"1proxy-{i+1}",
+                    "type": "socks5" if proxy.protocol.lower() == "socks5" else "socks4",
+                    "server": proxy.ip or "",
+                    "port": proxy.port or 1080,
+                })
+
+        # Add DIRECT as fallback
+        proxy_names.append("DIRECT")
+
+        config = {
+            "proxies": proxies_list,
+            "proxy-groups": [
+                {
+                    "name": "1proxy",
+                    "type": "select",
+                    "proxies": proxy_names
+                }
+            ],
+            "rules": [
+                "GEOIP,PRIVATE,DIRECT",
+                "MATCH,1proxy"
+            ]
+        }
+
+        yaml_content = yaml.dump(config, default_flow_style=False, sort_keys=False)
+
+        return PlainTextResponse(
+            content=yaml_content,
+            media_type="application/x-yaml",
+            headers={"Content-Disposition": "attachment; filename=1proxy_clash.yaml"},
+        )
+
+    return {"error": "Invalid format. Supported: txt, json, csv, pac, sing-box, clash"}
 
 
 @router.get("/proxies/random", response_model=ProxyResponse)
