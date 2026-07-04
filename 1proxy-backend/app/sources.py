@@ -162,6 +162,133 @@ class SourceRegistry:
             type=SourceType.GENERIC_TEXT,
             enabled=True,
         ),
+        # komutan234/Proxy-List-Free - Updated every 1-2 minutes
+        SourceConfig(
+            url="https://raw.githubusercontent.com/komutan234/Proxy-List-Free/main/proxies/http.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/komutan234/Proxy-List-Free/main/proxies/socks4.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/komutan234/Proxy-List-Free/main/proxies/socks5.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        # vakhov/fresh-proxy-list - Updated every 5-20 minutes
+        SourceConfig(
+            url="https://raw.githubusercontent.com/vakhov/fresh-proxy-list/master/http.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/vakhov/fresh-proxy-list/master/https.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/vakhov/fresh-proxy-list/master/socks4.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/vakhov/fresh-proxy-list/master/socks5.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        # TheSpeedX/PROXY-List - Daily updates
+        SourceConfig(
+            url="https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/https.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks4.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks5.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        # proxifly/free-proxy-list - Updated every 5 minutes
+        SourceConfig(
+            url="https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/protocols/http/data.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/protocols/https/data.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/protocols/socks4/data.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/protocols/socks5/data.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        # Thordata/awesome-free-proxy-list - Daily updates
+        SourceConfig(
+            url="https://raw.githubusercontent.com/Thordata/awesome-free-proxy-list/main/proxies/http.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/Thordata/awesome-free-proxy-list/main/proxies/socks5.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        # gfpcom/free-proxy-list - Updated every 30 minutes
+        SourceConfig(
+            url="https://raw.githubusercontent.com/gfpcom/free-proxy-list/main/http.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        # V2Ray / VMess / VLESS / Trojan / Shadowsocks Sources
+        SourceConfig(
+            url="https://raw.githubusercontent.com/vorz1k/v2box/main/supreme_vpns_1.txt",
+            type=SourceType.SUBSCRIPTION_BASE64,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/Sage-77/V2ray-configs/main/vmess.txt",
+            type=SourceType.SUBSCRIPTION_BASE64,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/Sage-77/V2ray-configs/main/vless.txt",
+            type=SourceType.SUBSCRIPTION_BASE64,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/Sage-77/V2ray-configs/main/trojan.txt",
+            type=SourceType.SUBSCRIPTION_BASE64,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/Sage-77/V2ray-configs/main/ss.txt",
+            type=SourceType.SUBSCRIPTION_BASE64,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/Sage-77/V2ray-configs/main/config.txt",
+            type=SourceType.SUBSCRIPTION_BASE64,
+            enabled=True,
+        ),
     ]
 
     @classmethod
