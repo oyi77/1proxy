@@ -260,12 +260,13 @@ async def startup():
         logger.info("⏳ Stabilizer: Waiting 15s before starting background workers...")
         await asyncio.sleep(15)
 
-        logger.info("🚀 Stabilizer: Spawning background workers...")
+        logger.info("🚀 Stabilizer: Spawning background workers (staggered)...")
         # Start validation worker with a conservative production batch size.
         _track_background_task(
             background_validation_worker(batch_size=20, interval_seconds=60),
             "proxy-validation-worker",
         )
+        await asyncio.sleep(2)  # Stagger to reduce SQLite contention
 
         # Import and start auto-scraper
         from app.background_validator import background_scraper_worker
@@ -273,17 +274,25 @@ async def startup():
         _track_background_task(
             background_scraper_worker(interval_minutes=10), "proxy-scraper-worker"
         )
+        await asyncio.sleep(2)
+
         _track_background_task(
             database_keepalive_worker(interval_seconds=300), "database-keepalive-worker"
         )
+        await asyncio.sleep(1)
+
         _track_background_task(
             revalidation_worker(batch_size=20, interval_seconds=60),
             "proxy-revalidation-worker",
         )
+        await asyncio.sleep(1)
+
         _track_background_task(
             cleanup_worker(interval_minutes=30),
             "proxy-cleanup-worker",
         )
+        await asyncio.sleep(1)
+
         _track_background_task(
             priority_tier_worker(interval_hours=6),
             "proxy-tier-worker",

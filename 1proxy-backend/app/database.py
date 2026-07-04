@@ -49,6 +49,20 @@ if DATABASE_URL.startswith("postgresql"):
         }
     )
 
+# Enable WAL mode for SQLite for better concurrency (readers don't block writers)
+if DATABASE_URL.startswith("sqlite"):
+    from sqlalchemy import event
+    from sqlalchemy.engine import Engine
+
+    @event.listens_for(Engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.execute("PRAGMA cache_size=10000")
+        cursor.execute("PRAGMA temp_store=MEMORY")
+        cursor.close()
+
 engine = create_async_engine(DATABASE_URL, **engine_kwargs)
 
 AsyncSessionLocal = async_sessionmaker(
