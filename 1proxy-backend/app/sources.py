@@ -289,6 +289,114 @@ class SourceRegistry:
             type=SourceType.SUBSCRIPTION_BASE64,
             enabled=True,
         ),
+        # ProxyScrape - Updated every 3 hours, high quality
+        SourceConfig(
+            url="https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all",
+            type=SourceType.GENERIC_TEXT,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://api.proxyscrape.com/v2/?request=displayproxies&protocol=socks4&timeout=10000&country=all",
+            type=SourceType.GENERIC_TEXT,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://api.proxyscrape.com/v2/?request=displayproxies&protocol=socks5&timeout=10000&country=all",
+            type=SourceType.GENERIC_TEXT,
+            enabled=True,
+        ),
+        # sunny9577/proxy-scraper - Updated every 3 hours
+        SourceConfig(
+            url="https://raw.githubusercontent.com/sunny9577/proxy-scraper/master/proxies.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        # hookzof/socks5_list - Active SOCKS5 list
+        SourceConfig(
+            url="https://raw.githubusercontent.com/hookzof/socks5_list/master/proxy.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        # ErcinDedeoglu/proxies - Daily updates, multiple protocols
+        SourceConfig(
+            url="https://raw.githubusercontent.com/ErcinDedeoglu/proxies/main/proxies/http.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/ErcinDedeoglu/proxies/main/proxies/https.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/ErcinDedeoglu/proxies/main/proxies/socks4.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/ErcinDedeoglu/proxies/main/proxies/socks5.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        # clarketm/proxy-list - Daily updates
+        SourceConfig(
+            url="https://raw.githubusercontent.com/clarketm/proxy-list/master/proxy-list-raw.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        # Additional roosterkid sources (complement existing ones)
+        SourceConfig(
+            url="https://raw.githubusercontent.com/roosterkid/openproxylist/main/SOCKS4_RAW.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/roosterkid/openproxylist/main/SOCKS5_RAW.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        # UpTimeRobot/proxy-list - Updated frequently
+        SourceConfig(
+            url="https://raw.githubusercontent.com/UpTimeRobot/proxy-list/main/http.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/UpTimeRobot/proxy-list/main/https.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/UpTimeRobot/proxy-list/main/socks4.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/UpTimeRobot/proxy-list/main/socks5.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        # jetkai/proxy-list - High quality, updated hourly
+        SourceConfig(
+            url="https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-http.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-https.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-socks4.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
+        SourceConfig(
+            url="https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-socks5.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
     ]
 
     @classmethod

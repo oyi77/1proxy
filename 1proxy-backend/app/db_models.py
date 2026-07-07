@@ -90,6 +90,14 @@ class Proxy(Base):
     can_access_google = Column(Boolean, nullable=True)
     can_access_openai = Column(Boolean, nullable=True)
     quality_score = Column(Integer, nullable=True, index=True)
+    
+    # Enhanced quality metrics
+    ssl_valid = Column(Boolean, nullable=True)
+    anonymity_level = Column(String(20), nullable=True)  # elite, anonymous, transparent
+    ip_blacklisted = Column(Boolean, nullable=True)
+    dns_leak = Column(Boolean, nullable=True)
+    response_time_p95 = Column(Integer, nullable=True)  # 95th percentile response time
+    geolocation_verified = Column(Boolean, nullable=True)
 
     validation_status = Column(
         String(20), default="pending", nullable=False, index=True
