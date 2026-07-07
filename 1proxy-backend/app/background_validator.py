@@ -8,6 +8,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Semaphore to limit concurrent database operations (prevent SQLite lock contention)
+DB_SEMAPHORE = asyncio.Semaphore(3)  # Max 3 concurrent database operations
 
 async def scrape_enabled_sources_once(session) -> dict:
     """Scrape all currently-enabled sources once.
@@ -146,40 +148,41 @@ async def background_scraper_worker(interval_minutes: int = 10):
 
     while True:
         try:
-            async with AsyncSessionLocal() as session:
-                await scrape_enabled_sources_once(session)
+            async with DB_SEMAPHORE:  # Limit concurrent database operations
+                async with AsyncSessionLocal() as session:
+                    await scrape_enabled_sources_once(session)
 
             await asyncio.sleep(interval_minutes * 60)
 
         except Exception as e:
-            logger.error(f"⚠️  Background scraper error: {e}")
+            logger.error(f"[WARN] Background scraper error: {e}")
             await asyncio.sleep(300)
-
 
 async def background_validation_worker(
     batch_size: int = 50, interval_seconds: int = 60
 ):
     """Continuously validate pending proxies in the background"""
-    logger.info("🔄 Background validation worker started")
+    logger.info("✓ Background validation worker started")
 
     while True:
         try:
-            async with AsyncSessionLocal() as session:
-                result = await db_storage.validate_and_update_proxies(
-                    session, limit=batch_size
-                )
-
-                if result["total"] > 0:
-                    logger.info(
-                        f"✅ Validated {result['validated']} proxies, "
-                        f"❌ {result['failed']} failed ({result['total']} total)"
+            async with DB_SEMAPHORE:  # Limit concurrent database operations
+                async with AsyncSessionLocal() as session:
+                    result = await db_storage.validate_and_update_proxies(
+                        session, limit=batch_size
                     )
 
-                await asyncio.sleep(interval_seconds)
+                    if result["validated"] > 0:
+                        logger.info(
+                            f"[OK] Validated {result['validated']} proxies, "
+                            f"[FAIL] {result['failed']} failed"
+                        )
+
+            await asyncio.sleep(interval_seconds)
 
         except Exception as e:
-            logger.error(f"⚠️  Background validation error: {e}")
-            await asyncio.sleep(interval_seconds)
+            logger.error(f"[WARN] Validation worker error: {e}")
+            await asyncio.sleep(60)
 
 
 async def revalidate_old_proxies(hours: int = 24, batch_size: int = 20):
@@ -193,39 +196,40 @@ async def revalidate_old_proxies(hours: int = 24, batch_size: int = 20):
     logger.info(f"🔄 Revalidating proxies older than {hours} hours")
 
     try:
-        async with AsyncSessionLocal() as session:
-            cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        async with DB_SEMAPHORE:  # Limit concurrent database operations
+            async with AsyncSessionLocal() as session:
+                cutoff_time = datetime.utcnow() - timedelta(hours=hours)
 
-            query = (
-                select(Proxy)
-                .where(
-                    or_(
-                        Proxy.last_validated < cutoff_time,
-                        Proxy.last_validated.is_(None),
+                query = (
+                    select(Proxy)
+                    .where(
+                        or_(
+                            Proxy.last_validated < cutoff_time,
+                            Proxy.last_validated.is_(None),
+                        )
                     )
+                    .limit(batch_size)
                 )
-                .limit(batch_size)
-            )
 
-            result = await session.execute(query)
-            old_proxies = result.scalars().all()
+                result = await session.execute(query)
+                old_proxies = result.scalars().all()
 
-            if not old_proxies:
-                logger.info("✅ No old proxies to revalidate")
-                return
+                if not old_proxies:
+                    logger.info("✅ No old proxies to revalidate")
+                    return
 
-            # Note: We NO LONGER set validation_status = "pending" here.
-            # This ensures proxies stay visible in the UI while being re-checked.
-            # validate_and_update_proxies now handles non-pending IDs if passed explicitly.
+                # Note: We NO LONGER set validation_status = "pending" here.
+                # This ensures proxies stay visible in the UI while being re-checked.
+                # validate_and_update_proxies now handles non-pending IDs if passed explicitly.
 
-            validation_result = await db_storage.validate_and_update_proxies(
-                session, proxy_ids=[p.id for p in old_proxies]
-            )
+                validation_result = await db_storage.validate_and_update_proxies(
+                    session, proxy_ids=[p.id for p in old_proxies]
+                )
 
-            logger.info(
-                f"✅ Revalidated {validation_result['validated']} old proxies, "
-                f"❌ {validation_result['failed']} failed"
-            )
+                logger.info(
+                    f"✅ Revalidated {validation_result['validated']} old proxies, "
+                    f"❌ {validation_result['failed']} failed"
+                )
 
     except Exception as e:
         logger.error(f"⚠️  Revalidation error: {e}")
