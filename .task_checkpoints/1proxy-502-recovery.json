@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-07-04T18:10:00+07:00",
+  "issue": "502 Bad Gateway on 1proxy-api.aitradepulse.com",
+  "root_cause": "Backend crashes on Alembic duplicate column: priority_tier in sqlite during upgrade head",
+  "state": {
+    "local_port": 5555,
+    "docker_compose": "docker-compose.prod.5555.yml",
+    "redis_container": "1proxy-redis-1",
+    "backend_container": "1proxy-backend-1",
+    "db_volume": "1proxy_redis_data",
+    "db_file_in_volume": "./backend_data/1proxy.db",
+    "current_migration_error": "412f1c5bb27a_add_priority_tier_column.py",
+    "cf_tunnel_id": "0621c8e9-edab-448f-9434-17807b184c35",
+    "cloudflared_config": "/etc/cloudflared/config.yaml",
+    "suspected_mapping_gap": "1proxy-api.aitradepulse.com"
+  }
+}

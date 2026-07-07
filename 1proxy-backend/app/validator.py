@@ -87,17 +87,30 @@ class ProxyValidator:
     
     def __init__(self, timeout: int = 10, max_concurrent: int = 50):
         self.timeout = aiohttp.ClientTimeout(total=timeout, connect=timeout//2)
-        self.semaphore = asyncio.Semaphore(max_concurrent)
+        self.max_concurrent = max_concurrent
+        self.semaphore = None  # Create lazily when event loop exists
         self.cache = ValidationCache(max_size=10000, ttl_seconds=3600)
-        # Connection pooling
-        self.connector = aiohttp.TCPConnector(
-            limit=max_concurrent * 2,
-            limit_per_host=10,
-            ttl_dns_cache=300,
-            enable_cleanup_closed=True
-        )
+        # Defer connector creation until event loop exists
+        self.connector = None
         self.session: Optional[aiohttp.ClientSession] = None
         self._response_times: Dict[str, List[int]] = {}  # Track for p95 calculation
+    
+    async def _ensure_session(self):
+        """Lazily create session and connector when event loop is available"""
+        if self.session is None:
+            if self.connector is None:
+                self.connector = aiohttp.TCPConnector(
+                    limit=self.max_concurrent * 2,
+                    limit_per_host=10,
+                    ttl_dns_cache=300,
+                    enable_cleanup_closed=True
+                )
+            if self.semaphore is None:
+                self.semaphore = asyncio.Semaphore(self.max_concurrent)
+            self.session = aiohttp.ClientSession(
+                connector=self.connector,
+                timeout=self.timeout
+            )
 
     async def validate_format(self, proxy: str) -> bool:
         if proxy.startswith(("http://", "https://", "socks4://", "socks5://")):
@@ -120,11 +133,7 @@ class ProxyValidator:
 
     async def _get_session(self) -> aiohttp.ClientSession:
         """Get or create shared session with connection pooling"""
-        if self.session is None or self.session.closed:
-            self.session = aiohttp.ClientSession(
-                timeout=self.timeout,
-                connector=self.connector
-            )
+        await self._ensure_session()
         return self.session
     
     async def close(self):
@@ -137,6 +146,7 @@ class ProxyValidator:
     async def validate_connectivity(
         self, proxy_url: str
     ) -> tuple[bool, Optional[int], Optional[str]]:
+        await self._ensure_session()  # Ensure semaphore is created
         async with self.semaphore:
             try:
                 start_time = time.time()
