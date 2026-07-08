@@ -335,6 +335,7 @@ class DatabaseStorage:
                     else None
                 )
                 proxy.can_access_google = bool(matching_result.can_access_google)
+                proxy.can_access_openai = bool(matching_result.can_access_openai)
                 proxy.country_code = (
                     str(matching_result.country_code)
                     if matching_result.country_code
