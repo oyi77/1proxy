@@ -4,14 +4,15 @@ services:
       context: ./1proxy-backend
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "5555:5555"
     environment:
+      - PORT=5555
       - PYTHONUNBUFFERED=1
       - REDIS_URL=redis://redis:6379
     depends_on:
       - redis
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5555/health"]
       interval: 30s
       timeout: 10s
       retries: 3
