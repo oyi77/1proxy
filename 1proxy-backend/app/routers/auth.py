@@ -67,8 +67,7 @@ class UserInfo(BaseModel):
     avatar_url: Optional[str]
     role: str
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 @router.get("/me", response_model=UserInfo)

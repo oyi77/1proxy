@@ -8,9 +8,7 @@ from app.database import get_db
 from app.dependencies import get_current_user, require_user, require_admin
 from app.db_models import User, ProxySource
 from app.models import SourceType
-from app.source_validator import source_validator, SourceValidationResult
 from app.models import SourceConfig
-
 router = APIRouter(prefix="/api/v1", tags=["sources"])
 
 # Access limiter from app state via request
@@ -50,8 +48,7 @@ class SourceResponse(BaseModel):
     is_admin_source: bool
     is_owner: bool = False
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class UserStats(BaseModel):

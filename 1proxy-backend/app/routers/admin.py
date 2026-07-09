@@ -34,8 +34,7 @@ class UserResponse(BaseModel):
     role: str
     created_at: Optional[str]
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 @router.get("/users", response_model=dict)

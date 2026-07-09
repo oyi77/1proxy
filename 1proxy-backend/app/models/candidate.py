@@ -15,5 +15,4 @@ class CandidateResponse(BaseModel):
     last_checked_at: Optional[datetime]
     meta_data: Optional[Dict[str, Any]]
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

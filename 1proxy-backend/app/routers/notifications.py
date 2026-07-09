@@ -21,8 +21,7 @@ class NotificationResponse(BaseModel):
     created_at: datetime
     read: bool
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 async def create_notification(
