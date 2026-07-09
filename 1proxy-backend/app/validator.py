@@ -128,8 +128,18 @@ class OptimizedProxyValidator:
         "server", "vps", "dedicated"
     ]
     
-    def __init__(self, config: Optional[ProxyValidationConfig] = None):
-        self.config = config or get_default_config()
+    def __init__(
+        self,
+        timeout: int = 10,
+        max_concurrent: int = 50,
+        config: Optional[ProxyValidationConfig] = None,
+    ):
+        # Handle backward compatibility - if config not provided but old params given
+        if config is None:
+            config = get_default_config()
+            config.max_concurrent_validations = max_concurrent
+            config.connectivity_timeout = timeout
+        self.config = config
         self.session: Optional[aiohttp.ClientSession] = None
         self.connector: Optional[aiohttp.TCPConnector] = None
         self.semaphore: Optional[asyncio.Semaphore] = None
@@ -749,3 +759,6 @@ optimized_validator = OptimizedProxyValidator()
 
 # Backward compatibility
 proxy_validator = optimized_validator
+
+# Backward compatibility for tests
+ProxyValidator = OptimizedProxyValidator
