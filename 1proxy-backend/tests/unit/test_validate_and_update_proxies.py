@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from app.database import Base
 from app.db_models import Proxy
 from app.db_storage import DatabaseStorage
-from app.validator import ValidationResult
+from app.validator_optimized import ValidationResult
 
 
 @pytest.mark.unit
@@ -56,9 +56,9 @@ async def test_validate_and_update_proxies_updates_entire_batch(monkeypatch):
             ),
         ]
 
-    # Patch the module-level proxy_validator used by DatabaseStorage
+    # Patch the module-level optimized_validator used by DatabaseStorage
     monkeypatch.setattr(
-        "app.db_storage.proxy_validator.validate_batch", fake_validate_batch
+        "app.db_storage.optimized_validator.validate_batch", fake_validate_batch
     )
 
     async with SessionLocal() as session:

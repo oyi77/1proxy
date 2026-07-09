@@ -159,7 +159,7 @@ async def background_scraper_worker(interval_minutes: int = 10):
             await asyncio.sleep(300)
 
 async def background_validation_worker(
-    batch_size: int = 50, interval_seconds: int = 60
+    batch_size: int = 20, interval_seconds: int = 60
 ):
     """Continuously validate pending proxies in the background"""
     logger.info("✓ Background validation worker started")
@@ -185,7 +185,7 @@ async def background_validation_worker(
             await asyncio.sleep(60)
 
 
-async def revalidate_old_proxies(hours: int = 24, batch_size: int = 20):
+async def revalidate_old_proxies(hours: int = 24, batch_size: int = 15):
     """Revalidate proxies that haven't been checked in X hours"""
     # Wait for initial surge to pass
     await asyncio.sleep(60)

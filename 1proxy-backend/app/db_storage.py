@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import logging
 
 from app.db_models import User, ProxySource, Proxy
-from app.validator import proxy_validator
+from app.validator_optimized import optimized_validator, get_default_config, ProxyValidationConfig
 
 logger = logging.getLogger(__name__)
 
@@ -287,9 +287,10 @@ class DatabaseStorage:
         self,
         session: AsyncSession,
         proxy_ids: Optional[List[int]] = None,
-        limit: int = 50,
+        limit: int = 20,  # Reduced from 50 for better SQLite performance
+        config: Optional[ProxyValidationConfig] = None,
     ) -> dict:
-        """Validate pending proxies and update their status"""
+        """Validate pending proxies and update their status - optimized version"""
         if proxy_ids:
             # If specific IDs provided (e.g. for revalidation), don't filter by pending status
             query = select(Proxy).where(Proxy.id.in_(proxy_ids))
@@ -309,7 +310,15 @@ class DatabaseStorage:
         if not proxy_tuples:
             return {"validated": 0, "failed": 0, "total": 0}
 
-        validation_results = await proxy_validator.validate_batch(proxy_tuples)
+        # Use optimized validator with custom config if provided
+        validator = optimized_validator
+        if config:
+            # Create a temporary validator with custom config
+            from app.validator_optimized import OptimizedProxyValidator
+            validator = OptimizedProxyValidator(config)
+            await validator._ensure_session()
+
+        validation_results = await validator.validate_batch(proxy_tuples)
 
         validated_count = 0
         failed_count = 0
