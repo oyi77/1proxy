@@ -143,5 +143,5 @@ class HunterService:
 
         try:
             return urlparse(url).netloc
-        except:
+        except Exception:
             return ""

@@ -308,7 +308,7 @@ def extract_domain(url: str) -> str:
     """Extract domain dari URL"""
     try:
         return urlparse(url).netloc
-    except:
+    except Exception:
         return "unknown"
 
 
@@ -317,7 +317,7 @@ def validate_url(url: str) -> bool:
     try:
         result = urlparse(url)
         return bool(result.scheme and result.netloc)
-    except:
+    except Exception:
         return False
 
 
