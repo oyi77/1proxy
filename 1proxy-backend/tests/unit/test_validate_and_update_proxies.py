@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from app.database import Base
 from app.db_models import Proxy
 from app.db_storage import DatabaseStorage
-from app.validator_optimized import ValidationResult
+from app.validator import ValidationResult
 
 
 @pytest.mark.unit

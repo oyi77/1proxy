@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import logging
 
 from app.db_models import User, ProxySource, Proxy
-from app.validator_optimized import optimized_validator, get_default_config, ProxyValidationConfig
+from app.validator import optimized_validator, get_default_config, ProxyValidationConfig
 
 logger = logging.getLogger(__name__)
 
@@ -314,7 +314,7 @@ class DatabaseStorage:
         validator = optimized_validator
         if config:
             # Create a temporary validator with custom config
-            from app.validator_optimized import OptimizedProxyValidator
+            from app.validator import OptimizedProxyValidator
             validator = OptimizedProxyValidator(config)
             await validator._ensure_session()
 
