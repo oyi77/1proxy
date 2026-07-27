@@ -373,6 +373,10 @@ class DatabaseStorage:
                 proxy.is_working = True
                 proxy.validation_status = "validated"
                 proxy.last_validated = datetime.utcnow()
+                # Reliability penalty: a proxy that's failed before gets a score haircut
+                if proxy.validation_failures and proxy.validation_failures > 0:
+                    penalty = min(proxy.validation_failures * 5, 30)
+                    proxy.quality_score = max(0, (proxy.quality_score or 0) - penalty)
                 proxy.validation_failures = 0
                 validated_count += 1
             else:
@@ -442,7 +446,7 @@ class DatabaseStorage:
         if order_by == "latency_ms":
             query = query.order_by(Proxy.latency_ms.asc().nulls_last())
         elif order_by == "quality_score":
-            query = query.order_by(Proxy.quality_score.desc().nulls_last())
+            query = query.order_by(Proxy.quality_score.desc().nulls_last(), Proxy.last_validated.desc().nulls_last())
         elif order_by == "created_at":
             query = query.order_by(Proxy.created_at.desc())
 
@@ -716,6 +720,36 @@ class DatabaseStorage:
 
         await session.commit()
         return deleted_count
+
+    async def purge_dead_proxies(self, session: AsyncSession, hours: int = 6) -> int:
+        """Hard-delete failed proxies not rechecked in N hours.
+        Free proxies die in minutes — this keeps the DB clean of corpses."""
+        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        stmt = delete(Proxy).where(
+            Proxy.is_working == False,
+            Proxy.last_validated < cutoff,
+        )
+        result = await session.execute(stmt)
+        await session.commit()
+        return result.rowcount
+
+    async def soft_stale_proxies(self, session: AsyncSession, hours: int = 24) -> int:
+        """Mark proxies as not-working if they haven't been revalidated in N hours.
+        They'll be re-tested by the next revalidation cycle and revived if alive."""
+        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        from sqlalchemy import update
+        stmt = (
+            update(Proxy)
+            .where(
+                Proxy.is_working == True,
+                Proxy.last_validated < cutoff,
+                Proxy.validation_status == "validated",
+            )
+            .values(is_working=False)
+        )
+        result = await session.execute(stmt)
+        await session.commit()
+        return result.rowcount
 
     async def update_priority_tiers(self, session: AsyncSession) -> int:
         """

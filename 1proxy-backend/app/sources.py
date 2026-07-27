@@ -403,6 +403,55 @@ class SourceRegistry:
             type=SourceType.TOR_EXIT,
             enabled=True,
         ),
+        # === Sprint 1: Additional free proxy sources ===
+        # Spys.me — updated every 30 minutes
+        SourceConfig(
+            url="https://spys.me/proxy.txt",
+            type=SourceType.GENERIC_TEXT,
+            enabled=True,
+        ),
+        # Free Proxy List — HTML table format
+        SourceConfig(
+            url="https://free-proxy-list.net/",
+            type=SourceType.GENERIC_TEXT,
+            enabled=True,
+        ),
+        # SSL Proxies — HTML table format
+        SourceConfig(
+            url="https://www.sslproxies.org/",
+            type=SourceType.GENERIC_TEXT,
+            enabled=True,
+        ),
+        # ProxyNova — updated daily
+        SourceConfig(
+            url="https://www.proxynova.com/proxy-server-list/",
+            type=SourceType.GENERIC_TEXT,
+            enabled=True,
+        ),
+        # HideMy.name — updated frequently
+        SourceConfig(
+            url="https://hidemy.name/en/proxy-list/",
+            type=SourceType.GENERIC_TEXT,
+            enabled=True,
+        ),
+        # ProxyList.download HTTP
+        SourceConfig(
+            url="https://www.proxy-list.download/api/v1/get?type=http",
+            type=SourceType.GENERIC_TEXT,
+            enabled=True,
+        ),
+        # ProxyList.download SOCKS5
+        SourceConfig(
+            url="https://www.proxy-list.download/api/v1/get?type=socks5",
+            type=SourceType.GENERIC_TEXT,
+            enabled=True,
+        ),
+        # OpenProxyList space / proxy list
+        SourceConfig(
+            url="https://openproxylist.xyz/http.txt",
+            type=SourceType.GITHUB_RAW,
+            enabled=True,
+        ),
     ]
 
     @classmethod

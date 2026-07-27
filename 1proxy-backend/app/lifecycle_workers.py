@@ -112,6 +112,16 @@ async def cleanup_worker(interval_minutes=30):
                 else:
                     logger.debug(f"📊 Current proxy count: {total_count} (under soft cap)")
 
+                # 5. Aggressive stale purge: delete failed proxies not rechecked in 6h
+                purge_dead = await db_storage.purge_dead_proxies(session, hours=6)
+                if purge_dead:
+                    logger.info(f"🗑️  Purged {purge_dead} dead proxies (failed + not rechecked in 6h)")
+
+                # 6. Soft-stale: mark working-but-stale proxies as non-working
+                soft_stale = await db_storage.soft_stale_proxies(session, hours=24)
+                if soft_stale:
+                    logger.info(f"💤 Soft-marked {soft_stale} stale proxies (not revalidated in 24h)")
+
             await asyncio.sleep(interval_minutes * 60)
 
         except Exception as e:
