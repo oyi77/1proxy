@@ -289,11 +289,20 @@ class DatabaseStorage:
         proxy_ids: Optional[List[int]] = None,
         limit: int = 20,  # Reduced from 50 for better SQLite performance
         config: Optional[ProxyValidationConfig] = None,
+        cooldown_minutes: int = 5,  # Skip proxies validated within this window
     ) -> dict:
         """Validate pending proxies and update their status - optimized version"""
         if proxy_ids:
             # If specific IDs provided (e.g. for revalidation), don't filter by pending status
-            query = select(Proxy).where(Proxy.id.in_(proxy_ids))
+            # But respect cooldown: skip proxies validated within the last N minutes
+            cutoff = datetime.utcnow() - timedelta(minutes=cooldown_minutes)
+            query = select(Proxy).where(
+                Proxy.id.in_(proxy_ids),
+                or_(
+                    Proxy.last_validated.is_(None),
+                    Proxy.last_validated < cutoff,
+                )
+            )
         else:
             query = (
                 select(Proxy).where(Proxy.validation_status == "pending").limit(limit)

@@ -988,3 +988,26 @@ async def delete_proxy(
     if not success:
         raise HTTPException(status_code=404, detail="Proxy not found")
     return None
+
+
+@router.get("/health", tags=["health"], summary="Health check")
+async def health_check(session: AsyncSession = Depends(get_db)):
+    """
+    Health check endpoint for monitoring.
+
+    Returns service status and database connectivity.
+    """
+    from sqlalchemy import text
+
+    try:
+        await session.execute(text("SELECT 1"))
+        db_status = "connected"
+    except Exception:
+        db_status = "disconnected"
+
+    return {
+        "status": "ok",
+        "service": "1proxy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "db_status": db_status,
+    }
