@@ -87,6 +87,10 @@ async def get_proxies_advanced(
         None,
         description="Filter by validation status (pending, validating, validated, failed)",
     ),
+    use_case: Optional[str] = Query(
+        None,
+        description="Optimize for use case: scraping, browsing, streaming, security",
+    ),
     order_by: str = Query(
         "quality_score",
         description="Sort by: quality_score, latency_ms, speed_mbps, created_at",
@@ -102,16 +106,53 @@ async def get_proxies_advanced(
     Public endpoint that returns validated proxies matching the specified criteria.
     Supports filtering by protocol, country, anonymity level, quality score,
     speed, latency, and validation status. Results can be sorted by various fields.
+    Use the `use_case` parameter to automatically optimize for a specific scenario.
 
     - **Authentication**: Not required (public endpoint)
     - **Rate limit**: 100 requests/hour
     - **Returns**: Paginated list of proxies with full metadata
 
+    Use cases:
+    - `scraping`: high anonymity + fast latency (min quality: 70)
+    - `browsing`: any proxy with low latency (min quality: 40)
+    - `streaming`: high bandwidth + low latency prioritized
+    - `security`: SOCKS5 + elite anonymity only
+
     Examples:
     - `/api/v1/proxies/advanced?protocol=socks5&min_quality=80&limit=10`
     - `/api/v1/proxies/advanced?country_code=US&anonymity=elite`
     - `/api/v1/proxies/advanced?order_by=latency_ms&order_direction=asc`
+    - `/api/v1/proxies/advanced?use_case=scraping&limit=5`
     """
+    # Apply use-case presets
+    if use_case:
+        if use_case == "scraping":
+            order_by = "quality_score"
+            order_direction = "desc"
+            if min_quality is None:
+                min_quality = 70
+            if anonymity is None:
+                anonymity = "elite"
+        elif use_case == "browsing":
+            order_by = "latency_ms"
+            order_direction = "asc"
+            if min_quality is None:
+                min_quality = 40
+        elif use_case == "streaming":
+            order_by = "speed_mbps"
+            order_direction = "desc"
+            if min_quality is None:
+                min_quality = 50
+        elif use_case == "security":
+            order_by = "quality_score"
+            order_direction = "desc"
+            if protocol is None:
+                protocol = "socks5"
+            if anonymity is None:
+                anonymity = "elite"
+            if min_quality is None:
+                min_quality = 60
+
     proxies, total = await db_storage.get_proxies(
         session=session,
         protocol=protocol,

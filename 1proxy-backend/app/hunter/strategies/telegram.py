@@ -21,6 +21,13 @@ class TelegramStrategy(BaseStrategy):
         "FreeV2rayVPN",
         "v2rayngvpn",
         "VLESS_V2RAY_TROJAN",
+        # Additional proxy channels
+        "ProxyListBot",
+        "socks5_list",
+        "HTTP_proxy_list",
+        "proxy_socks5",
+        "daily_proxy_list",
+        "live_proxy_list",
     ]
 
     @property
