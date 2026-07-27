@@ -101,4 +101,24 @@ export const sourceApi = {
     if (!res.ok) throw new Error(await extractApiError(res, "Failed to seed admin sources"));
     return res.json();
   },
+
+  async scrapeAdminSource(
+    sourceId: number
+  ): Promise<{ source_id: number; url: string; scraped: number; sample: string[]; re_enabled?: boolean; error?: string }> {
+    const res = await apiFetch(`${API_BASE}/api/v1/admin/sources/${sourceId}/scrape`, {
+      method: "POST",
+    });
+    if (!res.ok) throw new Error(await extractApiError(res, "Failed to scrape source"));
+    return res.json();
+  },
+
+  async reviveAdminSource(
+    sourceId: number
+  ): Promise<{ message: string; id: number; enabled: boolean }> {
+    const res = await apiFetch(`${API_BASE}/api/v1/admin/sources/${sourceId}/revive`, {
+      method: "POST",
+    });
+    if (!res.ok) throw new Error(await extractApiError(res, "Failed to revive source"));
+    return res.json();
+  },
 };

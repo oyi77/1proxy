@@ -8,6 +8,7 @@ from app.db_models import ProxySource, User
 from app.dependencies import require_admin
 from app.db_storage import db_storage
 from typing import Optional
+from datetime import datetime, timezone
 from pydantic import BaseModel
 import logging
 from slowapi import Limiter
@@ -96,6 +97,7 @@ async def admin_list_sources(
                 "description": s.description,
                 "enabled": s.enabled,
                 "validated": s.validated,
+                "validation_error": s.validation_error,
                 "total_scraped": s.total_scraped,
                 "success_rate": s.success_rate,
                 "last_scraped": s.last_scraped.isoformat() if s.last_scraped else None,
@@ -209,6 +211,93 @@ async def admin_delete_source(
         raise HTTPException(status_code=404, detail="Admin source not found")
     logger.info(f"Admin {current_user.email} deleted source #{source_id}")
     return {"message": "Source deleted", "source_id": source_id}
+
+
+@sources_router.post("/sources/{source_id}/scrape")
+@limiter.limit("10/minute")
+async def admin_scrape_source(
+    request: Request,
+    source_id: int,
+    current_user: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+):
+    """Scrape a single admin source immediately (test)."""
+    from app.models import SourceConfig, SourceType
+    from app.grabber import GitHubGrabber, WebGrabber
+
+    result = await session.execute(
+        select(ProxySource).where(ProxySource.id == source_id, ProxySource.is_admin_source.is_(True))
+    )
+    source_db = result.scalar_one_or_none()
+    if not source_db:
+        raise HTTPException(status_code=404, detail="Admin source not found")
+
+    try:
+        source_config = SourceConfig(url=source_db.url, type=SourceType(source_db.type))
+        if source_config.type in (SourceType.GENERIC_TEXT, SourceType.TOR_EXIT):
+            grabber = WebGrabber()
+        else:
+            grabber = GitHubGrabber()
+
+        proxies = await grabber.extract_proxies(source_config)
+        count = len(proxies)
+        sample = [f"{p.ip}:{p.port}" for p in proxies[:5]] if proxies else []
+
+        # Update source stats
+        source_db.last_scraped = datetime.now(timezone.utc).replace(tzinfo=None)
+        source_db.total_scraped = (source_db.total_scraped or 0) + count
+        source_db.validated = count > 0
+
+        if count > 0:
+            # Re-enable if it was disabled
+            source_db.enabled = True
+            source_db.validation_error = None
+
+        await session.commit()
+        logger.info(f"Admin {current_user.email} scraped source #{source_id}: {count} proxies")
+
+        return {
+            "source_id": source_id,
+            "url": source_db.url,
+            "scraped": count,
+            "sample": sample,
+            "re_enabled": count > 0,
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=f"Invalid source: {e}")
+    except Exception as e:
+        logger.error(f"Scrape failed for source #{source_id}: {e}")
+        return {
+            "source_id": source_id,
+            "url": source_db.url,
+            "error": str(e),
+            "scraped": 0,
+            "sample": [],
+        }
+
+
+@sources_router.post("/sources/{source_id}/revive")
+@limiter.limit("10/minute")
+async def admin_revive_source(
+    request: Request,
+    source_id: int,
+    current_user: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+):
+    """Re-enable a disabled source and reset its error state."""
+    result = await session.execute(
+        select(ProxySource).where(ProxySource.id == source_id, ProxySource.is_admin_source.is_(True))
+    )
+    source = result.scalar_one_or_none()
+    if not source:
+        raise HTTPException(status_code=404, detail="Admin source not found")
+
+    source.enabled = True
+    source.validation_error = None
+    await session.commit()
+    await session.refresh(source)
+    logger.info(f"Admin {current_user.email} revived source #{source_id}")
+    return {"message": "Source revived", "id": source.id, "enabled": source.enabled}
 
 
 @sources_router.post("/sources/{source_id}/protect")

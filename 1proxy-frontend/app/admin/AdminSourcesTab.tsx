@@ -78,6 +78,7 @@ export default function AdminSourcesTab({ theme }: { theme: string }) {
   });
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState("");
+  const [scrapeMsg, setScrapeMsg] = useState("");
   const LIMIT = 20;
 
   const fetchSources = useCallback(async () => {
@@ -152,6 +153,26 @@ export default function AdminSourcesTab({ theme }: { theme: string }) {
     }
   };
 
+  const handleScrape = async (s: AdminSource) => {
+    setScrapeMsg("");
+    try {
+      const res = await api.scrapeAdminSource(s.id);
+      setScrapeMsg(`🔍 ${res.scraped} proxies from ${res.url.split("/").slice(-2).join("/")}${res.re_enabled ? " (re-enabled ✅)" : ""}${res.error ? ` — ${res.error}` : ""}`);
+      fetchSources();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Scrape failed");
+    }
+  };
+
+  const handleRevive = async (id: number) => {
+    try {
+      await api.reviveAdminSource(id);
+      fetchSources();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Revive failed");
+    }
+  };
+
   const handleSeed = async () => {
     setSeeding(true);
     setSeedMsg("");
@@ -194,7 +215,7 @@ export default function AdminSourcesTab({ theme }: { theme: string }) {
 
       {seedMsg && (
         <div
-          className="p-3 rounded-xl text-sm font-bold"
+          className="p-3 rounded-xl text-sm font-bold mb-3"
           style={{
             background: isDark(theme) ? "#1a2e1a" : "#e8f5e9",
             border: "2px solid #4caf50",
@@ -203,6 +224,20 @@ export default function AdminSourcesTab({ theme }: { theme: string }) {
           }}
         >
           {seedMsg}
+        </div>
+      )}
+
+      {scrapeMsg && (
+        <div
+          className="p-3 rounded-xl text-sm font-bold mb-3"
+          style={{
+            background: isDark(theme) ? "#1a2a3e" : "#e3f2fd",
+            border: "2px solid #2196f3",
+            color: isDark(theme) ? "#90caf9" : "#1565c0",
+            fontFamily: "'Courier New',monospace",
+          }}
+        >
+          {scrapeMsg}
         </div>
       )}
 
@@ -369,6 +404,11 @@ export default function AdminSourcesTab({ theme }: { theme: string }) {
                     {s.name || s.url.split("/").slice(-2).join("/")}
                   </span>
                   <Badge label={s.type} color="var(--retro-blue)" />
+                  {!s.enabled && s.validation_error ? (
+                    <Badge label="dead" color="var(--retro-pink)" />
+                  ) : !s.validated ? (
+                    <Badge label="unvalidated" color="var(--retro-yellow)" />
+                  ) : null}
                   {s.enabled ? (
                     <Badge label="enabled" color="var(--retro-green)" />
                   ) : (
@@ -399,6 +439,22 @@ export default function AdminSourcesTab({ theme }: { theme: string }) {
                 </div>
               </div>
               <div className="flex gap-2 shrink-0">
+                <button
+                  style={btn("var(--retro-blue)")}
+                  onClick={() => handleScrape(s)}
+                  title="Scrape now"
+                >
+                  🔍
+                </button>
+                {!s.enabled && s.validation_error ? (
+                  <button
+                    style={btn("var(--retro-green)")}
+                    onClick={() => handleRevive(s.id)}
+                    title="Revive (re-enable)"
+                  >
+                    💀 Revive
+                  </button>
+                ) : null}
                 <button
                   style={btn(s.enabled ? "#888" : "var(--retro-green)")}
                   onClick={() => handleToggleEnabled(s)}

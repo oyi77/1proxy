@@ -103,6 +103,7 @@ export interface AdminSource {
   description?: string;
   enabled: boolean;
   validated: boolean;
+  validation_error?: string;
   total_scraped: number;
   success_rate: number;
   last_scraped: string | null;

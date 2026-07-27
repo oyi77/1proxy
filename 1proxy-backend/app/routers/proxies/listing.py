@@ -9,6 +9,36 @@ from app.routers.proxies._router import router, limiter
 from app.routers.proxies.models import ProxyResponse, ProxiesListResponse
 
 
+@router.get("/proxies", response_model=ProxiesListResponse)
+async def list_proxies(
+    protocol: Optional[str] = Query(None),
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    session: AsyncSession = Depends(get_db),
+):
+    """Simple public proxy listing (shortcut for /proxies/advanced)."""
+    proxies, total = await db_storage.get_proxies(
+        session=session, protocol=protocol, limit=limit, offset=offset, is_working=True
+    )
+    return ProxiesListResponse(
+        total=total,
+        count=len(proxies),
+        offset=offset,
+        limit=limit,
+        proxies=[
+            ProxyResponse(
+                **{
+                    **proxy.__dict__,
+                    "last_validated": proxy.last_validated.isoformat()
+                    if proxy.last_validated
+                    else None,
+                }
+            )
+            for proxy in proxies
+        ],
+    )
+
+
 @router.get("/proxies/advanced", response_model=ProxiesListResponse)
 async def get_proxies_advanced(
     protocol: Optional[str] = Query(None, description="Filter by protocol"),
