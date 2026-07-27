@@ -1,7 +1,7 @@
 import logging
 import aiohttp
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -92,7 +92,7 @@ class HunterService:
                 status="pending",
                 confidence_score=confidence,
                 proxies_found_count=len(proxies),
-                last_checked_at=datetime.utcnow(),
+                last_checked_at=datetime.now(timezone.utc).replace(tzinfo=None),
             )
             session.add(candidate)
             logger.info(

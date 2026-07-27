@@ -13,7 +13,7 @@ Manages automated proxy rotation with multiple strategies:
 
 import random
 from typing import List, Optional, Dict, Set
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -71,7 +71,7 @@ class RotationSession:
         # Cooldown
         last = self.proxy_last_used.get(proxy_id)
         if last is not None:
-            if datetime.utcnow() - last < timedelta(minutes=self.cooldown_minutes):
+            if datetime.now(timezone.utc).replace(tzinfo=None) - last < timedelta(minutes=self.cooldown_minutes):
                 return True
 
         return False
@@ -79,8 +79,8 @@ class RotationSession:
     def mark_proxy_used(self, proxy_id: int, proxy_ip: Optional[str] = None) -> None:
         """Record that a proxy was used."""
         self.proxy_use_count[proxy_id] = self.proxy_use_count.get(proxy_id, 0) + 1
-        self.proxy_last_used[proxy_id] = datetime.utcnow()
-        self.last_used = datetime.utcnow()
+        self.proxy_last_used[proxy_id] = datetime.now(timezone.utc).replace(tzinfo=None)
+        self.last_used = datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class ProxyRotator:
@@ -98,7 +98,7 @@ class ProxyRotator:
 
     def _cleanup_old_sessions(self) -> None:
         """Remove expired rotation sessions."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         expired = [
             sid
             for sid, s in self.sessions.items()
@@ -160,7 +160,7 @@ class ProxyRotator:
 
         if use_cache and cache_key in self.proxy_cache:
             cache_time = self.cache_timestamps.get(cache_key)
-            if cache_time and datetime.utcnow() - cache_time < self.cache_ttl:
+            if cache_time and datetime.now(timezone.utc).replace(tzinfo=None) - cache_time < self.cache_ttl:
                 logger.debug(f"Cache hit for rotation: {cache_key}")
                 return self.proxy_cache[cache_key]
 
@@ -181,7 +181,7 @@ class ProxyRotator:
         proxies = list(result.scalars().all())
 
         self.proxy_cache[cache_key] = proxies
-        self.cache_timestamps[cache_key] = datetime.utcnow()
+        self.cache_timestamps[cache_key] = datetime.now(timezone.utc).replace(tzinfo=None)
         logger.debug(f"Loaded {len(proxies)} proxies for rotation (key: {cache_key})")
         return proxies
 

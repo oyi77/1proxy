@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import select, and_, or_, func, delete
 from app.database import AsyncSessionLocal
 from app.db_storage import db_storage
@@ -33,15 +33,15 @@ async def revalidation_worker(batch_size=20, interval_seconds=60):
                     Proxy.last_validated.is_(None),
                     and_(
                         Proxy.priority_tier == 1,
-                        Proxy.last_validated < datetime.utcnow() - TIER_VALIDATION_INTERVALS[1]
+                        Proxy.last_validated < datetime.now(timezone.utc).replace(tzinfo=None) - TIER_VALIDATION_INTERVALS[1]
                     ),
                     and_(
                         Proxy.priority_tier == 2,
-                        Proxy.last_validated < datetime.utcnow() - TIER_VALIDATION_INTERVALS[2]
+                        Proxy.last_validated < datetime.now(timezone.utc).replace(tzinfo=None) - TIER_VALIDATION_INTERVALS[2]
                     ),
                     and_(
                         Proxy.priority_tier == 3,
-                        Proxy.last_validated < datetime.utcnow() - TIER_VALIDATION_INTERVALS[3]
+                        Proxy.last_validated < datetime.now(timezone.utc).replace(tzinfo=None) - TIER_VALIDATION_INTERVALS[3]
                     ),
                 )
 

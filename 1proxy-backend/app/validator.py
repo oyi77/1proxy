@@ -19,7 +19,7 @@ import certifi
 import hashlib
 from typing import Optional, Dict, List, Tuple, Any
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 from collections import OrderedDict
 from dataclasses import dataclass, field

@@ -31,6 +31,8 @@ from app.lifecycle_workers import revalidation_worker, cleanup_worker, priority_
 from app.metrics import metrics_app
 import asyncio
 import logging
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 # Configure logging
 logging.basicConfig(
@@ -41,8 +43,96 @@ logger = logging.getLogger(__name__)
 # Configure rate limiting
 limiter = Limiter(key_func=get_remote_address)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan: startup initialisation and shutdown cleanup."""
+    # --- STARTUP ---
+    app.state.background_tasks = set()
+    await init_db()
+
+    async with AsyncSessionLocal() as session:
+        try:
+            admin_user = await db_storage.get_or_create_user(
+                session=session,
+                oauth_provider="local",
+                oauth_id="admin",
+                email="admin@1proxy.local",
+                username="admin",
+                role="admin",
+            )
+            await db_storage.seed_admin_sources(session, admin_user.id)
+            await session.commit()
+            logger.info(
+                f"✅ Admin user created/verified: {admin_user.username} (ID: {admin_user.id})"
+            )
+            logger.info("✅ Admin sources seeded")
+        except Exception as e:
+            logger.warning(f"⚠️  Startup error (non-critical): {e}")
+            await session.rollback()
+
+    # STARTUP STABILIZER: Let Railway pass health checks before spawning workers.
+    async def delayed_workers():
+        logger.info("⏳ Stabilizer: Waiting 15s before starting background workers...")
+        await asyncio.sleep(15)
+
+        logger.info("🚀 Stabilizer: Spawning background workers (staggered)...")
+        # Start validation worker with a conservative production batch size.
+        _track_background_task(
+            background_validation_worker(batch_size=20, interval_seconds=60),
+            "proxy-validation-worker",
+        )
+        await asyncio.sleep(2)  # Stagger to reduce SQLite contention
+
+        # Import and start auto-scraper
+        from app.background_validator import background_scraper_worker
+
+        _track_background_task(
+            background_scraper_worker(interval_minutes=10), "proxy-scraper-worker"
+        )
+        await asyncio.sleep(2)
+
+        _track_background_task(
+            database_keepalive_worker(interval_seconds=300),
+            "database-keepalive-worker",
+        )
+        await asyncio.sleep(1)
+
+        _track_background_task(
+            revalidation_worker(batch_size=20, interval_seconds=60),
+            "proxy-revalidation-worker",
+        )
+        await asyncio.sleep(1)
+
+        _track_background_task(
+            cleanup_worker(interval_minutes=30),
+            "proxy-cleanup-worker",
+        )
+        await asyncio.sleep(1)
+
+        _track_background_task(
+            priority_tier_worker(interval_hours=6),
+            "proxy-tier-worker",
+        )
+        logger.info("✅ Stabilizer: Background workers active")
+
+    _track_background_task(delayed_workers(), "startup-delayed-workers")
+
+    yield
+
+    # --- SHUTDOWN ---
+    tasks = getattr(app.state, "background_tasks", set())
+    for task in list(tasks):
+        task.cancel()
+
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+    await dispose_database()
+
+
 app = FastAPI(
-    title="1proxy API",
+    lifespan=lifespan,
     description="""
 ## Community-Driven Proxy Aggregation Platform
 
@@ -228,90 +318,6 @@ def _track_background_task(coro, name: str):
     app.state.background_tasks.add(task)
     task.add_done_callback(_on_done)
     return task
-
-
-@app.on_event("startup")
-async def startup():
-    app.state.background_tasks = set()
-    await init_db()
-
-    async with AsyncSessionLocal() as session:
-        try:
-            admin_user = await db_storage.get_or_create_user(
-                session=session,
-                oauth_provider="local",
-                oauth_id="admin",
-                email="admin@1proxy.local",
-                username="admin",
-                role="admin",
-            )
-            await db_storage.seed_admin_sources(session, admin_user.id)
-            await session.commit()
-            logger.info(
-                f"✅ Admin user created/verified: {admin_user.username} (ID: {admin_user.id})"
-            )
-            logger.info("✅ Admin sources seeded")
-        except Exception as e:
-            logger.warning(f"⚠️  Startup error (non-critical): {e}")
-            await session.rollback()
-
-    # STARTUP STABILIZER: Let Railway pass health checks before spawning workers.
-    async def delayed_workers():
-        logger.info("⏳ Stabilizer: Waiting 15s before starting background workers...")
-        await asyncio.sleep(15)
-
-        logger.info("🚀 Stabilizer: Spawning background workers (staggered)...")
-        # Start validation worker with a conservative production batch size.
-        _track_background_task(
-            background_validation_worker(batch_size=20, interval_seconds=60),
-            "proxy-validation-worker",
-        )
-        await asyncio.sleep(2)  # Stagger to reduce SQLite contention
-
-        # Import and start auto-scraper
-        from app.background_validator import background_scraper_worker
-
-        _track_background_task(
-            background_scraper_worker(interval_minutes=10), "proxy-scraper-worker"
-        )
-        await asyncio.sleep(2)
-
-        _track_background_task(
-            database_keepalive_worker(interval_seconds=300), "database-keepalive-worker"
-        )
-        await asyncio.sleep(1)
-
-        _track_background_task(
-            revalidation_worker(batch_size=20, interval_seconds=60),
-            "proxy-revalidation-worker",
-        )
-        await asyncio.sleep(1)
-
-        _track_background_task(
-            cleanup_worker(interval_minutes=30),
-            "proxy-cleanup-worker",
-        )
-        await asyncio.sleep(1)
-
-        _track_background_task(
-            priority_tier_worker(interval_hours=6),
-            "proxy-tier-worker",
-        )
-        logger.info("✅ Stabilizer: Background workers active")
-
-    _track_background_task(delayed_workers(), "startup-delayed-workers")
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    tasks = getattr(app.state, "background_tasks", set())
-    for task in list(tasks):
-        task.cancel()
-
-    if tasks:
-        await asyncio.gather(*tasks, return_exceptions=True)
-
-    await dispose_database()
 
 
 @app.get("/")

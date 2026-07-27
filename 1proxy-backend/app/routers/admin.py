@@ -9,7 +9,7 @@ from app.hunter.service import HunterService
 from app.db_storage import db_storage
 from typing import List, Optional
 from pydantic import BaseModel
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # All admin endpoints require admin role
 router = APIRouter(
@@ -454,9 +454,9 @@ async def recalc_priority_tiers(admin_user=Depends(require_admin), session: Asyn
 async def get_lifecycle_stats(session: AsyncSession = Depends(get_db)):
     from sqlalchemy import text, func as sa_func
     from app.db_models import Proxy
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
 
     # Total by tier
     tier_result = await session.execute(

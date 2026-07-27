@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.database import get_db
 from app.dependencies import require_user

@@ -7,7 +7,7 @@ monitoring statistik, dan mengatur scraping operations.
 
 import asyncio
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_

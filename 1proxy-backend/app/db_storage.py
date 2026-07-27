@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, delete, or_, case
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 
 from app.db_models import User, ProxySource, Proxy, SourceTrustScore, ProxyPerformanceHistory
@@ -71,8 +71,8 @@ class DatabaseStorage:
         existing = result.scalar_one_or_none()
 
         if existing:
-            existing.last_seen = datetime.utcnow()
-            existing.updated_at = datetime.utcnow()
+            existing.last_seen = datetime.now(timezone.utc).replace(tzinfo=None)
+            existing.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
             if source_id and not existing.source_id:
                 existing.source_id = source_id
             await session.commit()
@@ -119,7 +119,7 @@ class DatabaseStorage:
                     "quality_score": validation_result.quality_score,
                     "is_working": True,
                     "validation_status": "validated",
-                    "last_validated": datetime.utcnow(),
+                    "last_validated": datetime.now(timezone.utc).replace(tzinfo=None),
                 }
             )
 
@@ -133,7 +133,7 @@ class DatabaseStorage:
         if not proxies_data:
             return 0
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         prepared_data = []
 
         for proxy_data in proxies_data:
@@ -243,7 +243,7 @@ class DatabaseStorage:
     ) -> int:
         """Fallback method for adding proxies one by one if bulk insert fails."""
         added_count = 0
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
 
         for proxy_data in proxies_data:
             try:
@@ -295,7 +295,7 @@ class DatabaseStorage:
         if proxy_ids:
             # If specific IDs provided (e.g. for revalidation), don't filter by pending status
             # But respect cooldown: skip proxies validated within the last N minutes
-            cutoff = datetime.utcnow() - timedelta(minutes=cooldown_minutes)
+            cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=cooldown_minutes)
             query = select(Proxy).where(
                 Proxy.id.in_(proxy_ids),
                 or_(
@@ -381,7 +381,7 @@ class DatabaseStorage:
                 )
                 proxy.is_working = True
                 proxy.validation_status = "validated"
-                proxy.last_validated = datetime.utcnow()
+                proxy.last_validated = datetime.now(timezone.utc).replace(tzinfo=None)
                 # Reliability penalty: a proxy that's failed before gets a score haircut
                 if proxy.validation_failures and proxy.validation_failures > 0:
                     penalty = min(proxy.validation_failures * 5, 30)
@@ -397,7 +397,7 @@ class DatabaseStorage:
             else:
                 proxy.is_working = False
                 proxy.validation_status = "failed"
-                proxy.last_validated = datetime.utcnow()
+                proxy.last_validated = datetime.now(timezone.utc).replace(tzinfo=None)
                 proxy.validation_failures = (proxy.validation_failures or 0) + 1
                 failed_count += 1
                 # Record performance history
@@ -439,7 +439,7 @@ class DatabaseStorage:
         # Add TTL filter - only show proxies validated within stale_cutoff_hours
         # Include proxies with NULL last_validated (never validated but working)
         if is_working:
-            cutoff = datetime.utcnow() - timedelta(hours=stale_cutoff_hours)
+            cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=stale_cutoff_hours)
             conditions.append(
                 or_(
                     Proxy.last_validated >= cutoff,
@@ -504,7 +504,7 @@ class DatabaseStorage:
         stale_cutoff_hours: int = 3,
     ) -> Optional[Proxy]:
         # Apply TTL filter to ensure fresh proxies
-        cutoff = datetime.utcnow() - timedelta(hours=stale_cutoff_hours)
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=stale_cutoff_hours)
         query = select(Proxy).where(
             Proxy.is_working.is_(True),
             Proxy.validation_status == "validated",
@@ -532,7 +532,7 @@ class DatabaseStorage:
         instead of multiple separate queries.
         """
         # Apply TTL filter - only count visible (non-stale working) proxies
-        cutoff = datetime.utcnow() - timedelta(hours=3)
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=3)
         # Single query with GROUP BY for protocol counts
         result = await session.execute(
             select(Proxy.protocol, func.count(Proxy.id).label("count")).
@@ -690,7 +690,7 @@ class DatabaseStorage:
 
     async def purge_unseen_proxies(self, session: AsyncSession, days: int = 14) -> int:
         """Delete proxies where last_seen < NOW() - INTERVAL 'days days'"""
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
         stmt = delete(Proxy).where(Proxy.last_seen < cutoff)
         result = await session.execute(stmt)
         await session.commit()
@@ -698,7 +698,7 @@ class DatabaseStorage:
 
     async def purge_stale_pending(self, session: AsyncSession, days: int = 7) -> int:
         """Delete pending (validation_status='pending') proxies where first_seen < NOW() - INTERVAL 'days days'"""
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
         stmt = delete(Proxy).where(
             Proxy.validation_status == "pending",
             Proxy.first_seen < cutoff
@@ -745,7 +745,7 @@ class DatabaseStorage:
     async def purge_dead_proxies(self, session: AsyncSession, hours: int = 6) -> int:
         """Hard-delete failed proxies not rechecked in N hours.
         Free proxies die in minutes — this keeps the DB clean of corpses."""
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=hours)
         stmt = delete(Proxy).where(
             Proxy.is_working == False,
             Proxy.last_validated < cutoff,
@@ -757,7 +757,7 @@ class DatabaseStorage:
     async def soft_stale_proxies(self, session: AsyncSession, hours: int = 24) -> int:
         """Mark proxies as not-working if they haven't been revalidated in N hours.
         They'll be re-tested by the next revalidation cycle and revived if alive."""
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=hours)
         from sqlalchemy import update
         stmt = (
             update(Proxy)
@@ -944,7 +944,7 @@ class DatabaseStorage:
 
     async def get_quality_trend(self, session: AsyncSession, days: int = 30) -> List[dict]:
         """Daily avg quality_score over the last N days."""
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
         rows = await session.execute(
             select(
                 func.date(Proxy.last_validated).label("date"),
@@ -1009,7 +1009,7 @@ class DatabaseStorage:
             total = 0
 
         # Fresh: validated within 6h
-        fresh_cutoff = datetime.utcnow() - timedelta(hours=6)
+        fresh_cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=6)
         fresh = await session.scalar(
             select(func.count(Proxy.id)).where(
                 Proxy.is_working == True,

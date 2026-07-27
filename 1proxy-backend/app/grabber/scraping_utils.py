@@ -11,7 +11,7 @@ import time
 import random
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
 

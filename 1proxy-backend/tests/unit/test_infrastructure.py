@@ -1,7 +1,7 @@
 """Tests for infrastructure additions: CI, pre-commit, .env.example, cooldown, health."""
 import os
 import yaml
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 class TestCIConfiguration:
@@ -99,7 +99,7 @@ class TestValidationCooldown:
 
     def test_cooldown_skips_recently_validated(self):
         """Proxies validated within cooldown window are skipped."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         last_validated = now - timedelta(minutes=2)  # 2 min ago < 5 min cooldown
         cutoff = now - timedelta(minutes=5)
         # This proxy's last_validated >= cutoff → should be skipped
@@ -107,7 +107,7 @@ class TestValidationCooldown:
 
     def test_cooldown_allows_old_proxies(self):
         """Proxies validated outside cooldown window are allowed."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         last_validated = now - timedelta(minutes=10)  # 10 min ago > 5 min cooldown
         cutoff = now - timedelta(minutes=5)
         # This proxy's last_validated < cutoff → should be allowed

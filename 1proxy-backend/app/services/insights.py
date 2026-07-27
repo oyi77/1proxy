@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.db_models import Proxy, ProxySource, ValidationHistory
 import statistics
 

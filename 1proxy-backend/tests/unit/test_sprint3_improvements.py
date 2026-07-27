@@ -1,6 +1,6 @@
 """Tests for Sprint 3 improvements: SOCKS normalization, enriched API, admin metrics."""
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.db_models import ProxyPerformanceHistory
 
 
@@ -48,22 +48,22 @@ class TestEnrichedAPI:
 
     def test_last_seen_computed_recent(self):
         """Recent validation returns small number."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         lv = now - timedelta(hours=2)
-        delta = round((datetime.utcnow() - lv.replace(tzinfo=None)).total_seconds() / 3600, 1)
+        delta = round((datetime.now(timezone.utc).replace(tzinfo=None) - lv.replace(tzinfo=None)).total_seconds() / 3600, 1)
         assert 1.5 <= delta <= 2.5  # ~2 hours
 
     def test_last_seen_computed_old(self):
         """Old validation returns large number."""
-        lv = datetime.utcnow() - timedelta(days=7)
-        delta = round((datetime.utcnow() - lv.replace(tzinfo=None)).total_seconds() / 3600, 1)
+        lv = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=7)
+        delta = round((datetime.now(timezone.utc).replace(tzinfo=None) - lv.replace(tzinfo=None)).total_seconds() / 3600, 1)
         assert 160 <= delta <= 170  # ~168 hours
 
     def test_last_seen_computed_invalid_string_graceful(self):
         """Invalid datetime string returns None gracefully."""
         try:
             lv = datetime.fromisoformat("not-a-date")
-            _ = (datetime.utcnow() - lv.replace(tzinfo=None)).total_seconds() / 3600
+            _ = (datetime.now(timezone.utc).replace(tzinfo=None) - lv.replace(tzinfo=None)).total_seconds() / 3600
             assert False, "Should have raised"
         except (ValueError, TypeError):
             pass

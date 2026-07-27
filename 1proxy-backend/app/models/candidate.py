@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class CandidateResponse(BaseModel):

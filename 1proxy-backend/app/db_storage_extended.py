@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, desc, asc, update
 from sqlalchemy.orm import selectinload
 from typing import List, Optional, Dict, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 import json
 
@@ -39,7 +39,7 @@ class ExtendedDatabaseStorage(DatabaseStorage):
             status="running",
             config=config or {},
             initiated_by=initiated_by,
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc).replace(tzinfo=None),
         )
 
         session.add(scraping_session)
@@ -75,7 +75,7 @@ class ExtendedDatabaseStorage(DatabaseStorage):
                     proxies_valid=proxies_valid,
                     error_message=error_message,
                     metadata=metadata or {},
-                    finished_at=datetime.utcnow()
+                    finished_at=datetime.now(timezone.utc).replace(tzinfo=None)
                     if status in ["completed", "failed"]
                     else None,
                 )
@@ -146,7 +146,7 @@ class ExtendedDatabaseStorage(DatabaseStorage):
         """Get scraping statistics for the last N days."""
         from app.db_models import ScrapingSession
 
-        since_date = datetime.utcnow() - timedelta(days=days)
+        since_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
 
         status_stats = await session.execute(
             select(
@@ -256,7 +256,7 @@ class ExtendedDatabaseStorage(DatabaseStorage):
             if status is not None:
                 update_data["status"] = status
                 if status in ["approved", "rejected"]:
-                    update_data["last_checked_at"] = datetime.utcnow()
+                    update_data["last_checked_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
             if confidence_score is not None:
                 update_data["confidence_score"] = confidence_score
             if proxies_found is not None:
@@ -288,7 +288,7 @@ class ExtendedDatabaseStorage(DatabaseStorage):
         days: int = 30,
     ) -> Dict:
         """Get Hunter protocol statistics and performance metrics."""
-        since_date = datetime.utcnow() - timedelta(days=days)
+        since_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
 
         status_stats = await session.execute(
             select(
@@ -440,7 +440,7 @@ class ExtendedDatabaseStorage(DatabaseStorage):
         days: int = 7,
     ) -> Dict:
         """Get comprehensive performance metrics."""
-        since_date = datetime.utcnow() - timedelta(days=days)
+        since_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
 
         validation_metrics = await session.execute(
             select(
@@ -546,7 +546,7 @@ class ExtendedDatabaseStorage(DatabaseStorage):
             task_type=task_type,
             task_data=task_data,
             status="pending",
-            scheduled_for=scheduled_for or datetime.utcnow(),
+            scheduled_for=scheduled_for or datetime.now(timezone.utc).replace(tzinfo=None),
             retry_count=retry_count,
             max_retries=max_retries,
         )
@@ -584,7 +584,7 @@ class ExtendedDatabaseStorage(DatabaseStorage):
 
             update_data = {
                 "status": status,
-                "completed_at": datetime.utcnow()
+                "completed_at": datetime.now(timezone.utc).replace(tzinfo=None)
                 if status in ["completed", "failed"]
                 else None,
             }
@@ -622,7 +622,7 @@ class ExtendedDatabaseStorage(DatabaseStorage):
         query = select(BackgroundTask).where(
             and_(
                 BackgroundTask.status == "pending",
-                BackgroundTask.scheduled_for <= datetime.utcnow(),
+                BackgroundTask.scheduled_for <= datetime.now(timezone.utc).replace(tzinfo=None),
             )
         )
 

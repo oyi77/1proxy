@@ -2,7 +2,7 @@ import os
 import aiohttp
 import logging
 from typing import List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.hunter.strategy import BaseStrategy
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class GitHubStrategy(BaseStrategy):
         ]
 
         # Calculate date for "pushed:>" filter (last 24h)
-        yesterday = (datetime.utcnow() - timedelta(hours=24)).strftime("%Y-%m-%d")
+        yesterday = (datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=24)).strftime("%Y-%m-%d")
 
         headers = {"Accept": "application/vnd.github.v3+json"}
         if self.token:

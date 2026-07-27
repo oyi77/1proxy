@@ -85,3 +85,17 @@ def sample_performance_history(sample_http_proxy) -> ProxyPerformanceHistory:
         uptime_percent=99.9,
         success=True,
     )
+
+
+def pytest_configure(config):
+    """Set test environment variables before any test runs."""
+    import os
+
+    os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///./data/test_1proxy.db")
+    os.environ.setdefault("SECRET_KEY", "test_secret_key_for_jwt_tokens")
+    os.environ.setdefault("GITHUB_CLIENT_ID", "mock_client_id")
+    os.environ.setdefault("GITHUB_CLIENT_SECRET", "mock_client_secret")
+    os.environ.setdefault("GOOGLE_CLIENT_ID", "mock_google_id")
+    os.environ.setdefault("GOOGLE_CLIENT_SECRET", "mock_google_secret")
+    os.environ.setdefault("API_URL", "http://localhost:8000")
+    os.environ.setdefault("FRONTEND_URL", "http://localhost:3000")

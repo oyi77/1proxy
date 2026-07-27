@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from pydantic import BaseModel, computed_field
-from datetime import datetime
+from datetime import datetime, timezone
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 import aiohttp
@@ -46,7 +46,7 @@ class ProxyResponse(BaseModel):
             return None
         try:
             lv = datetime.fromisoformat(self.last_validated)
-            delta = (datetime.utcnow() - lv.replace(tzinfo=None)).total_seconds() / 3600
+            delta = (datetime.now(timezone.utc).replace(tzinfo=None) - lv.replace(tzinfo=None)).total_seconds() / 3600
             return round(delta, 1)
         except (ValueError, TypeError):
             return None
@@ -389,7 +389,7 @@ async def export_proxies(
 
         pac_content = f"""function FindProxyForURL(url, host) {{
     // 1proxy PAC File - Auto-generated proxy configuration
-    // Generated: {datetime.utcnow().isoformat()}
+    // Generated: {datetime.now(timezone.utc).replace(tzinfo=None).isoformat()}
     // Total proxies: {len(http_proxies)}
     
     // Bypass localhost and private networks
@@ -617,7 +617,7 @@ async def test_proxy(request: Request, test_request: ProxyTestRequest):
     This endpoint is rate-limited to prevent abuse.
     Free tier: 10 tests per minute.
     """
-    tested_at = datetime.utcnow().isoformat()
+    tested_at = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
 
     try:
         # Parse proxy URL
@@ -1008,6 +1008,6 @@ async def health_check(session: AsyncSession = Depends(get_db)):
     return {
         "status": "ok",
         "service": "1proxy",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
         "db_status": db_status,
     }

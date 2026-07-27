@@ -3,7 +3,7 @@ Tests for ProxyRotator - rotation strategies
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.proxy_rotator import (
     ProxyRotator,
     RotationStrategy,
@@ -42,13 +42,13 @@ class TestRotationSession:
     def test_should_exclude_proxy_cooldown(self):
         session = RotationSession(session_id="test", cooldown_minutes=5)
         # Set last-used timestamp via the correct dict
-        session.proxy_last_used[1] = datetime.utcnow()
+        session.proxy_last_used[1] = datetime.now(timezone.utc).replace(tzinfo=None)
         assert session.should_exclude_proxy(1, "1.2.3.4") is True
 
     def test_should_not_exclude_after_cooldown(self):
         session = RotationSession(session_id="test", cooldown_minutes=5)
         # Last used 10 minutes ago → cooldown expired
-        session.proxy_last_used[1] = datetime.utcnow() - timedelta(minutes=10)
+        session.proxy_last_used[1] = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=10)
         assert session.should_exclude_proxy(1, "1.2.3.4") is False
 
     def test_should_exclude_proxy_ip(self):
@@ -65,7 +65,7 @@ class TestRotationSession:
 
     def test_mark_proxy_used_records_timestamp(self):
         session = RotationSession(session_id="test")
-        before = datetime.utcnow()
+        before = datetime.now(timezone.utc).replace(tzinfo=None)
         session.mark_proxy_used(1, "1.2.3.4")
         assert 1 in session.proxy_last_used
         assert session.proxy_last_used[1] >= before

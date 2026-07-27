@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.database import AsyncSessionLocal
 from app.db_storage import db_storage
 from app.grabber import GitHubGrabber, WebGrabber
@@ -94,7 +94,7 @@ async def scrape_enabled_sources_once(session) -> dict:
             total_added += added
 
             source_db.total_scraped = (source_db.total_scraped or 0) + len(proxies)
-            source_db.last_scraped = datetime.utcnow()
+            source_db.last_scraped = datetime.now(timezone.utc).replace(tzinfo=None)
             source_db.validated = len(proxies) > 0
             source_db.validation_error = None if proxies else "No proxies extracted from source"
             if len(proxies) > 0:
@@ -200,7 +200,7 @@ async def revalidate_old_proxies(hours: int = 24, batch_size: int = 15):
     try:
         async with DB_SEMAPHORE:  # Limit concurrent database operations
             async with AsyncSessionLocal() as session:
-                cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+                cutoff_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=hours)
 
                 query = (
                     select(Proxy)
