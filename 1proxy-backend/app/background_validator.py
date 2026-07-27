@@ -60,6 +60,8 @@ async def scrape_enabled_sources_once(session) -> dict:
             # They may be slower but provide fresh proxies from web tables
             if source.type == SourceType.GENERIC_TEXT:
                 grabber = WebGrabber()
+            elif source.type == SourceType.TOR_EXIT:
+                grabber = WebGrabber()
             elif source.type == SourceType.GITHUB_RAW:
                 grabber = GitHubGrabber()
             else:

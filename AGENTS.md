@@ -16,9 +16,9 @@ Every task follows this sequence. No exceptions.
 Full details: `~/.1ai/core/PROCESS.md` (auto-injected by hooks)
 
 ## This repo
-[One sentence: what this repo does]
-Stack: unknown
-Domain: [what this repo is responsible for]
+Community-driven proxy aggregation platform: scrapes, validates, and serves free proxies from 10+ GitHub sources. Quality scoring (0-100), multi-protocol, two-phase validation.
+Stack: Python (FastAPI, SQLAlchemy async, aiohttp) / Next.js 15 / SQLite (dev) / Supabase PostgreSQL (prod)
+Domain: proxy aggregation, validation pipeline, community-driven proxy sources
 
 ## Rules — thin loader, no submodule
 Rules are NOT vendored into this repo. This repo does NOT need a rules submodule.
@@ -54,7 +54,13 @@ Do NOT add the rules repo as a git submodule. Update rules centrally, then run/s
 5. Run GATE.md before commit/PR.
 
 ## Repo-specific conventions
-- [add conventions specific to this repo]
+- Two-phase validation: Phase 1 (fast connectivity + latency), Phase 2 (comprehensive: anonymity, geo, access)
+- ipquery.io preferred over separate geo/proxy-type APIs — single call for location + risk + ISP
+- All external API calls cached via LRUCache (5K-10K entries, TTL configurable per API)
+- Repository pattern for DB — never execute() in routers, use db_storage methods
+- Async-first: aiohttp for HTTP, asyncio for background workers, SQLAlchemy async for DB
+- Quality score 0-100: latency(40) + anonymity(25) + access(20) + type(10) + SSL(10) - penalties
+- Rate limited: public 100/hr, auth 500/hr, admin unlimited (configurable)
 
 ## Commands
 - Dev:   `npm run dev`

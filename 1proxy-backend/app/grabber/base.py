@@ -40,6 +40,10 @@ class BaseGrabber(ABC):
     async def parse_content(self, content: str, source_type: SourceType) -> List[Proxy]:
         proxies = []
 
+        if source_type == SourceType.TOR_EXIT:
+            from app.grabber.parsers import TorExitParser
+            return TorExitParser.parse(content)
+
         if source_type == SourceType.SUBSCRIPTION_BASE64:
             try:
                 content = SubscriptionDecoder.decode(content)

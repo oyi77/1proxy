@@ -56,6 +56,7 @@ class ValidationConfig(BaseModel):
     dns_leak_test_url: str = "https://dns.google/resolve?name=example.com&type=A"
     geo_api_url: str = "https://ipapi.co/{ip}/json/"
     proxy_type_api_url: str = "https://ipinfo.io/{ip}/json"
+    ip_query_url: str = "https://api.ipquery.io/{ip}"
 
 
 # Production-optimized configs

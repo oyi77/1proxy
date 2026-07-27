@@ -397,6 +397,12 @@ class SourceRegistry:
             type=SourceType.GITHUB_RAW,
             enabled=True,
         ),
+        # Tor exit nodes (updated every hour by Tor Metrics)
+        SourceConfig(
+            url="https://onionoo.torproject.org/details?type=relay&running=true&flag=Exit&fields=or_addresses",
+            type=SourceType.TOR_EXIT,
+            enabled=True,
+        ),
     ]
 
     @classmethod

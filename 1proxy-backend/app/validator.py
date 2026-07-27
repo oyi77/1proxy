@@ -32,19 +32,6 @@ logger = logging.getLogger(__name__)
 IP_REGEX = re.compile(r"(\d{1,3}\.){3}\d{1,3}:\d{1,5}")
 
 
-def is_valid_ip(ip: str) -> bool:
-    """Validate IP address octets are in range 0-255"""
-    try:
-        parts = ip.split(".")
-        return len(parts) == 4 and all(0 <= int(part) <= 255 for part in parts)
-    except (ValueError, AttributeError):
-        return False
-
-
-def is_valid_port(port: int) -> bool:
-    """Validate port is in range 1-65535"""
-    return 1 <= port <= 65535
-
 
 class ValidationResult(BaseModel):
     success: bool
@@ -278,7 +265,7 @@ class OptimizedProxyValidator:
                     
                     # Check for transparency indicators
                     transparent_indicators = [
-                        "X-Forwarded-For", "Via", "X-Real-Ip", "Forwarded",
+                        "X-Forwarded-For", "X-Real-Ip", "Forwarded",
                         "X-Proxy-Id", "Proxy-Connection"
                     ]
                     
@@ -395,6 +382,66 @@ class OptimizedProxyValidator:
             pass
         
         return {"proxy_type": "unknown", "isp": None, "org": None, "asn": None}
+
+    async def get_ip_intel_cached(self, ip: str) -> Dict[str, Optional[object]]:
+        """Get IP intelligence from ipquery.io — replaces geo + proxy-type lookups.
+        Returns location, ISP, risk data in one call. Falls back to empty on failure.
+        """
+        cached = await self._geo_cache.get(f"ipq:{ip}")
+        if cached is not None:
+            self._stats["cache_hits"] += 1
+            return cached
+
+        self._stats["external_api_calls"] += 1
+
+        try:
+            url = self.config.ip_query_url.format(ip=ip)
+            async with self.semaphore:
+                async with self.session.get(
+                    url,
+                    timeout=aiohttp.ClientTimeout(total=self.config.external_api_timeout)
+                ) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        risk = data.get("risk", {})
+                        isp = data.get("isp", {})
+                        loc = data.get("location", {})
+
+                        # Determine proxy type: ipquery returns is_datacenter bool
+                        proxy_type = "residential"
+                        if risk.get("is_datacenter"):
+                            proxy_type = "datacenter"
+                        if risk.get("is_proxy") or risk.get("is_vpn"):
+                            proxy_type = "proxy"
+                        if risk.get("is_tor"):
+                            proxy_type = "tor"
+
+                        result: Dict[str, Optional[object]] = {
+                            "country_code": loc.get("country_code"),
+                            "country_name": loc.get("country"),
+                            "state": loc.get("state"),
+                            "city": loc.get("city"),
+                            "asn": isp.get("asn"),
+                            "isp": isp.get("isp") or isp.get("org"),
+                            "org": isp.get("org"),
+                            "proxy_type": proxy_type,
+                            "is_proxy": risk.get("is_proxy"),
+                            "is_vpn": risk.get("is_vpn"),
+                            "is_tor": risk.get("is_tor"),
+                            "is_datacenter": risk.get("is_datacenter"),
+                            "is_mobile": risk.get("is_mobile"),
+                            "risk_score": risk.get("risk_score"),
+                        }
+                        await self._geo_cache.set(f"ipq:{ip}", result)
+                        return result
+        except Exception:
+            pass
+
+        return {"country_code": None, "country_name": None, "state": None,
+                "city": None, "asn": None, "isp": None, "org": None,
+                "proxy_type": "unknown", "is_proxy": None, "is_vpn": None,
+                "is_tor": None, "is_datacenter": None, "is_mobile": None,
+                "risk_score": None}
     
     async def check_ssl_validity_fast(self, proxy_url: str) -> Optional[bool]:
         """Fast SSL check"""
@@ -582,13 +629,42 @@ class OptimizedProxyValidator:
         
         self._stats["validations_comprehensive"] += 1
         
-        # Run all checks in parallel
+        # Primary: single ipquery.io call for geo + proxy type + risk
+        ipq = await self.get_ip_intel_cached(ip)
+        geo_info = {
+            "country_code": ipq.get("country_code"),
+            "country_name": ipq.get("country_name"),
+            "state": ipq.get("state"),
+            "city": ipq.get("city"),
+            "asn": ipq.get("asn"),
+        }
+        proxy_type = ipq.get("proxy_type", "unknown")
+        risk_score = ipq.get("risk_score")
+        is_proxy = ipq.get("is_proxy")
+        is_vpn = ipq.get("is_vpn")
+        is_tor = ipq.get("is_tor")
+        isp = ipq.get("isp")
+        org = ipq.get("org")
+
+        # Fallback: if ipquery returned nothing useful, try old services
+        if proxy_type == "unknown":
+            old_geo, old_type = await asyncio.gather(
+                self.get_geo_info_cached(ip),
+                self.detect_proxy_type_cached(ip),
+                return_exceptions=True,
+            )
+            if not isinstance(old_geo, Exception) and old_geo.get("country_code"):
+                geo_info = old_geo
+                if not isinstance(old_type, Exception):
+                    proxy_type = old_type.get("proxy_type", "unknown")
+                    isp = old_type.get("isp") or isp
+                    org = old_type.get("org") or org
+
+        # Run remaining checks in parallel
         results = await asyncio.gather(
             self.check_anonymity_fast(proxy_url),
             self.test_google_access_fast(proxy_url),
             self.test_openai_access_fast(proxy_url),
-            self.get_geo_info_cached(ip),
-            self.detect_proxy_type_cached(ip),
             self.check_ssl_validity_fast(proxy_url),
             self.check_dns_leak_fast(proxy_url, ip),
             return_exceptions=True,
@@ -597,20 +673,24 @@ class OptimizedProxyValidator:
         anonymity = results[0] if not isinstance(results[0], Exception) else None
         can_access_google = results[1] if not isinstance(results[1], Exception) else None
         can_access_openai = results[2] if not isinstance(results[2], Exception) else None
-        geo_info = results[3] if not isinstance(results[3], Exception) else {}
-        type_info = results[4] if not isinstance(results[4], Exception) else {"proxy_type": "unknown"}
-        ssl_valid = results[5] if not isinstance(results[5], Exception) else None
-        dns_leak = results[6] if not isinstance(results[6], Exception) else None
-        
-        proxy_type = type_info.get("proxy_type", "unknown")
-        asn = geo_info.get("asn") or type_info.get("asn")
-        
+        ssl_valid = results[3] if not isinstance(results[3], Exception) else None
+        dns_leak = results[4] if not isinstance(results[4], Exception) else None
+
+        asn = geo_info.get("asn")
+
         is_blacklisted = await self.check_blacklist_fast(ip, asn)
-        
+
         quality_score = await self.calculate_quality_score(
-            phase1_result.latency_ms, anonymity, can_access_google, 
+            phase1_result.latency_ms, anonymity, can_access_google,
             can_access_openai, proxy_type, ssl_valid, is_blacklisted, dns_leak
         )
+
+        # Risk penalty from ipquery.io (risk_score 0-100, higher = riskier)
+        if risk_score is not None and risk_score > 50:
+            quality_score = max(0, quality_score - max(0, (risk_score - 50) // 5))
+        # Penalty for known proxy/VPN IPs (free proxies often recycled)
+        if is_proxy or is_vpn:
+            quality_score = max(0, quality_score - 5)
         
         p95_latency = self._calculate_p95_latency(proxy_url)
         
@@ -623,8 +703,8 @@ class OptimizedProxyValidator:
             country_code=geo_info.get("country_code"),
             country_name=geo_info.get("country_name"),
             proxy_type=proxy_type,
-            isp=type_info.get("isp"),
-            org=type_info.get("org"),
+            isp=isp,
+            org=org,
             quality_score=quality_score,
             error_message=None,
             ssl_valid=ssl_valid,

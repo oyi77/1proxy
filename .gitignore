@@ -57,9 +57,12 @@ next-env.d.ts
 
 # Databases
 *.db
+*.db-shm
+*.db-wal
 *.sqlite
 *.sqlite3
-1proxy-backend/data/*.db
+1proxy-backend/data/
+!1proxy-backend/data/.gitkeep
 
 # Logs
 *.log

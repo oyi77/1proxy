@@ -7,6 +7,7 @@ class SourceType(str, Enum):
     GITHUB_RAW = "github_raw"
     SUBSCRIPTION_BASE64 = "subscription_base64"
     GENERIC_TEXT = "generic_text"
+    TOR_EXIT = "tor_exit"
 
 
 class SourceConfig(BaseModel):

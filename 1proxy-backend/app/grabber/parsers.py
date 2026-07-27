@@ -1,7 +1,8 @@
-import base64
 import json
 from typing import Optional
+from app.grabber.patterns import ProxyPatterns
 from app.models.proxy import Proxy
+from app.utils.base64_decoder import SubscriptionDecoder
 
 
 class VMessParser:
@@ -12,11 +13,7 @@ class VMessParser:
 
         try:
             encoded = url.replace("vmess://", "")
-            missing_padding = len(encoded) % 4
-            if missing_padding:
-                encoded += "=" * (4 - missing_padding)
-
-            decoded = base64.b64decode(encoded).decode("utf-8")
+            decoded = SubscriptionDecoder.decode(encoded)
             config = json.loads(decoded)
 
             return Proxy(
@@ -83,3 +80,43 @@ class SSParser:
             )
         except Exception as e:
             raise ValueError(f"Failed to parse Shadowsocks URL: {e}")
+
+
+class TorExitParser:
+    """Parse Tor exit node JSON from Onionoo API -> SOCKS5 proxies."""
+
+    @staticmethod
+    def parse(content: str) -> list[Proxy]:
+        proxies: list[Proxy] = []
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError:
+            return proxies
+
+        for relay in data.get("relays", []):
+            for addr in relay.get("or_addresses", []):
+                # or_addresses format: "1.2.3.4:443" or "[::1]:443"
+                addr = addr.strip()
+                if addr.startswith("["):
+                    # IPv6 — skip for now, only grab IPv4
+                    continue
+                if ":" not in addr:
+                    continue
+                ip, port_str = addr.rsplit(":", 1)
+                try:
+                    port = int(port_str)
+                except ValueError:
+                    continue
+                if not ProxyPatterns.is_valid_ip(ip):
+                    continue
+                if not ProxyPatterns.is_valid_port(port):
+                    continue
+                proxies.append(
+                    Proxy(
+                        ip=ip,
+                        port=port,
+                        protocol="socks5",
+                        source="tor_exit",
+                    )
+                )
+        return proxies
