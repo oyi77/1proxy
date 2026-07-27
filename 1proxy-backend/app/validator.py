@@ -476,7 +476,31 @@ class OptimizedProxyValidator:
         except Exception:
             pass
         return None
-    
+
+    async def check_ip_integrity(self, proxy_url: str, claimed_ip: str) -> Optional[bool]:
+        """Verify the proxy actually routes through its claimed IP.
+
+        Calls api.ipify.org through the proxy and compares the returned IP
+        to the claimed IP. A mismatch suggests the proxy is lying or misrouted.
+        """
+        try:
+            async with self.semaphore:
+                async with self.session.get(
+                    "https://api.ipify.org?format=json",
+                    proxy=proxy_url,
+                    ssl=False,
+                    timeout=aiohttp.ClientTimeout(total=5.0),
+                ) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        returned_ip = data.get("ip", "")
+                        if returned_ip and claimed_ip:
+                            return returned_ip == claimed_ip
+                        return None  # Can't compare if either side is missing
+        except Exception:
+            pass
+        return None
+
     async def check_blacklist_fast(self, ip: str, asn: Optional[str]) -> bool:
         """Fast blacklist check"""
         if asn and asn in self.BLACKLISTED_ASNS:
@@ -667,6 +691,7 @@ class OptimizedProxyValidator:
             self.test_openai_access_fast(proxy_url),
             self.check_ssl_validity_fast(proxy_url),
             self.check_dns_leak_fast(proxy_url, ip),
+            self.check_ip_integrity(proxy_url, ip),
             return_exceptions=True,
         )
         
@@ -675,6 +700,7 @@ class OptimizedProxyValidator:
         can_access_openai = results[2] if not isinstance(results[2], Exception) else None
         ssl_valid = results[3] if not isinstance(results[3], Exception) else None
         dns_leak = results[4] if not isinstance(results[4], Exception) else None
+        ip_integrity = results[5] if not isinstance(results[5], Exception) else None
 
         asn = geo_info.get("asn")
 
@@ -691,6 +717,9 @@ class OptimizedProxyValidator:
         # Penalty for known proxy/VPN IPs (free proxies often recycled)
         if is_proxy or is_vpn:
             quality_score = max(0, quality_score - 5)
+        # IP integrity penalty: if the proxy's IP doesn't match its claimed IP
+        if ip_integrity is False:
+            quality_score = max(0, (quality_score or 0) // 2)  # 50% penalty for lying proxies
         
         p95_latency = self._calculate_p95_latency(proxy_url)
         

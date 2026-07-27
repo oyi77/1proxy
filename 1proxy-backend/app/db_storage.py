@@ -5,7 +5,7 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 import logging
 
-from app.db_models import User, ProxySource, Proxy
+from app.db_models import User, ProxySource, Proxy, SourceTrustScore, ProxyPerformanceHistory
 from app.validator import optimized_validator, get_default_config, ProxyValidationConfig
 
 logger = logging.getLogger(__name__)
@@ -379,12 +379,24 @@ class DatabaseStorage:
                     proxy.quality_score = max(0, (proxy.quality_score or 0) - penalty)
                 proxy.validation_failures = 0
                 validated_count += 1
+                # Record performance history
+                session.add(ProxyPerformanceHistory(
+                    proxy_id=proxy.id,
+                    latency_ms=matching_result.latency_ms,
+                    success=True,
+                ))
             else:
                 proxy.is_working = False
                 proxy.validation_status = "failed"
                 proxy.last_validated = datetime.utcnow()
                 proxy.validation_failures = (proxy.validation_failures or 0) + 1
                 failed_count += 1
+                # Record performance history
+                session.add(ProxyPerformanceHistory(
+                    proxy_id=proxy.id,
+                    latency_ms=None,
+                    success=False,
+                ))
 
         await session.commit()
 
@@ -750,6 +762,124 @@ class DatabaseStorage:
         result = await session.execute(stmt)
         await session.commit()
         return result.rowcount
+
+    async def update_source_trust_scores(self, session: AsyncSession) -> dict:
+        """Update SourceTrustScore for every source based on proxy validation rates.
+
+        For each source with at least 10 proxies (minimum sample), compute trust_score
+        as the ratio of validated to total (validated + failed) proxies. Sources
+        without enough data get a neutral 50.0 score.
+
+        Returns dict of {source_id: trust_score} and which sources were disabled.
+        """
+        from sqlalchemy import update as sa_update
+
+        # Get all sources
+        sources_result = await session.execute(select(ProxySource))
+        sources = sources_result.scalars().all()
+        results = {}
+        disabled = []
+
+        for source in sources:
+            # Count validated, failed, and total proxies for this source
+            total = await session.scalar(
+                select(func.count(Proxy.id)).where(Proxy.source_id == source.id)
+            )
+            if not total or total < 10:
+                # Not enough data to judge — keep neutral
+                results[source.id] = {"trust_score": 50.0, "confidence": 0.0}
+                continue
+
+            validated = await session.scalar(
+                select(func.count(Proxy.id)).where(
+                    Proxy.source_id == source.id,
+                    Proxy.validation_status == "validated",
+                )
+            )
+            failed = await session.scalar(
+                select(func.count(Proxy.id)).where(
+                    Proxy.source_id == source.id,
+                    Proxy.validation_status == "failed",
+                )
+            )
+            denom = (validated or 0) + (failed or 0)
+            if denom == 0:
+                trust_score = 50.0  # neutral
+            else:
+                trust_score = round((validated or 0) / denom * 100, 1)
+
+            confidence = min(total / 100, 1.0)  # scale: 0.1 at 10 proxies, 1.0 at 100+
+
+            # Upsert trust score
+            existing = await session.execute(
+                select(SourceTrustScore).where(
+                    SourceTrustScore.source_id == source.id
+                )
+            )
+            trust_record = existing.scalar_one_or_none()
+            if trust_record:
+                trust_record.trust_score = trust_score
+                trust_record.confidence = confidence
+            else:
+                session.add(
+                    SourceTrustScore(
+                        source_id=source.id,
+                        trust_score=trust_score,
+                        confidence=confidence,
+                    )
+                )
+
+            results[source.id] = {"trust_score": trust_score, "confidence": confidence}
+
+            # Auto-disable sources with trust < 10 and enough data (50+ proxies)
+            if trust_score < 10.0 and total >= 50 and source.enabled:
+                source.enabled = False
+                disabled.append(source.id)
+                logger.warning(
+                    f"🔇 Auto-disabled source {source.id} ({source.url[:60]}): "
+                    f"trust_score={trust_score}, total_proxies={total}"
+                )
+
+        await session.commit()
+        return {"scores": results, "disabled": disabled}
+
+    async def apply_source_trust_bonus(self, session: AsyncSession) -> int:
+        """Apply quality_score bonus to proxies from high-trust sources.
+
+        - Trust >= 90: +10 quality_score
+        - Trust >= 70: +5 quality_score
+        Returns number of proxies updated.
+        """
+        from sqlalchemy import update as sa_update
+        from sqlalchemy import bindparam
+
+        updated = 0
+        # Get all trust scores
+        scores_result = await session.execute(
+            select(SourceTrustScore).where(SourceTrustScore.confidence > 0.2)
+        )
+        for score in scores_result.scalars().all():
+            bonus = 0
+            if score.trust_score >= 90:
+                bonus = 10
+            elif score.trust_score >= 70:
+                bonus = 5
+            if bonus > 0:
+                stmt = (
+                    sa_update(Proxy)
+                    .where(
+                        Proxy.source_id == score.source_id,
+                        Proxy.quality_score.isnot(None),
+                    )
+                    .values(
+                        quality_score=Proxy.quality_score + bonus
+                    )
+                )
+                result = await session.execute(stmt)
+                updated += result.rowcount
+
+        await session.commit()
+        return updated
 
     async def update_priority_tiers(self, session: AsyncSession) -> int:
         """

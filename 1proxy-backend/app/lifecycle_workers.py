@@ -122,6 +122,22 @@ async def cleanup_worker(interval_minutes=30):
                 if soft_stale:
                     logger.info(f"💤 Soft-marked {soft_stale} stale proxies (not revalidated in 24h)")
 
+                # 7. Update source trust scores + auto-disable bad sources
+                trust_result = await db_storage.update_source_trust_scores(session)
+                updated_scores = len(trust_result["scores"])
+                if trust_result["disabled"]:
+                    disabled_sources = len(trust_result["disabled"])
+                    logger.info(f"🔇 Auto-disabled {disabled_sources} low-trust sources ")
+                    for sid in trust_result["disabled"]:
+                        logger.info(f"   - Disabled source ID {sid}")
+
+                # 8. Apply trust bonus to proxies from high-trust sources
+                trust_updated = await db_storage.apply_source_trust_bonus(session)
+                if trust_updated:
+                    logger.info(f"⭐ Applied trust bonus to {trust_updated} proxies")
+                else:
+                    logger.debug(f"⭐ Trust scores computed for {updated_scores} sources, no bonus applied yet (need more data)")
+
             await asyncio.sleep(interval_minutes * 60)
 
         except Exception as e:
