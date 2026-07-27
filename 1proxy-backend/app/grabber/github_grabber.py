@@ -2,7 +2,11 @@ import aiohttp
 import asyncio
 import os
 from app.grabber.base import BaseGrabber
-from app.models.source import SourceConfig
+from app.models.source import SourceConfig, SourceType
+from app.grabber.registry import ProviderRegistry
+
+@ProviderRegistry.register(SourceType.GITHUB_RAW)
+@ProviderRegistry.register(SourceType.SUBSCRIPTION_BASE64)
 
 
 class GitHubGrabber(BaseGrabber):
@@ -52,7 +56,7 @@ class GitHubGrabber(BaseGrabber):
                     continue
                 raise
 
-            except aiohttp.ClientError as e:
+            except aiohttp.ClientError:
                 if attempt < self.max_retries - 1:
                     await asyncio.sleep(self.retry_delay)
                     continue

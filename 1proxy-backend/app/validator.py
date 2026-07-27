@@ -19,10 +19,8 @@ import certifi
 import hashlib
 from typing import Optional, Dict, List, Tuple, Any
 from pydantic import BaseModel
-from datetime import datetime, timezone
 import logging
 from collections import OrderedDict
-from dataclasses import dataclass, field
 
 from app.validation_config import get_validator_config
 
@@ -683,7 +681,6 @@ class OptimizedProxyValidator:
         risk_score = ipq.get("risk_score")
         is_proxy = ipq.get("is_proxy")
         is_vpn = ipq.get("is_vpn")
-        is_tor = ipq.get("is_tor")
         isp = ipq.get("isp")
         org = ipq.get("org")
 

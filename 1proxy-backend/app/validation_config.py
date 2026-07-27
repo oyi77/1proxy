@@ -8,7 +8,6 @@ Tune these settings based on your deployment environment:
 """
 
 from pydantic import BaseModel
-from typing import Optional
 
 
 class ValidationConfig(BaseModel):

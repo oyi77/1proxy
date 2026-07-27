@@ -56,9 +56,10 @@ async def test_validate_and_update_proxies_updates_entire_batch(monkeypatch):
             ),
         ]
 
-    # Patch the module-level optimized_validator used by DatabaseStorage
+    # Patch the module-level optimized_validator used by ValidationRepository
+    # The validator is imported inside validate_and_update_proxies from app.validator
     monkeypatch.setattr(
-        "app.db_storage.optimized_validator.validate_batch", fake_validate_batch
+        "app.validator.optimized_validator.validate_batch", fake_validate_batch
     )
 
     async with SessionLocal() as session:

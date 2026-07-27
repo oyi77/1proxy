@@ -1,5 +1,4 @@
 import logging
-import re
 import aiohttp
 from typing import List
 from app.hunter.strategy import BaseStrategy
@@ -42,7 +41,7 @@ class TelegramStrategy(BaseStrategy):
                     url = f"https://t.me/s/{channel}"
                     async with session.get(url, timeout=10) as resp:
                         if resp.status == 200:
-                            html = await resp.text()
+                            _ = await resp.text()
                             # Telegram web preview encodes special chars, but universal extractor handles it
                             # We just need to return the URL of the preview page or the text content
                             # However, HunterService fetches the URL. So we'll return the channel URL itself

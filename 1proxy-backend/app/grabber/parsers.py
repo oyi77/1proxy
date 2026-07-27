@@ -1,5 +1,4 @@
 import json
-from typing import Optional
 from app.grabber.patterns import ProxyPatterns
 from app.models.proxy import Proxy
 from app.utils.base64_decoder import SubscriptionDecoder

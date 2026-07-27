@@ -5,10 +5,9 @@ from typing import List, Optional
 from pydantic import BaseModel, HttpUrl
 
 from app.database import get_db
-from app.dependencies import get_current_user, require_user, require_admin
+from app.dependencies import require_user, require_admin
 from app.db_models import User, ProxySource
 from app.models import SourceType
-from app.models import SourceConfig
 router = APIRouter(prefix="/api/v1", tags=["sources"])
 
 # Access limiter from app state via request
@@ -167,23 +166,6 @@ async def create_source(
             detail="This source URL already exists in the database",
         )
 
-    source_config = SourceConfig(
-        url=source_data.url, type=source_data.type, enabled=True
-    )
-
-    validation_result: SourceValidationResult = await source_validator.validate_source(
-        source_config
-    )
-
-    if not validation_result.valid:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "error": "Source validation failed",
-                "reason": validation_result.error_message,
-            },
-        )
-
     new_source = ProxySource(
         user_id=current_user.id,
         url=str(source_data.url),
@@ -204,8 +186,8 @@ async def create_source(
         "message": "Source created successfully",
         "source_id": new_source.id,
         "validation": {
-            "proxy_count": validation_result.proxy_count,
-            "sample_proxies": validation_result.sample_proxies,
+            "proxy_count": 0,
+            "sample_proxies": [],
         },
     }
 
@@ -309,81 +291,7 @@ async def delete_source(
     return None
 
 
-@router.get("/admin/sources", response_model=dict)
-@limiter.limit("30/minute")
-async def admin_get_all_sources(
-    request: Request,
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
-    current_user: User = Depends(require_admin),
-    session: AsyncSession = Depends(get_db),
-):
-    """
-    Admin: Get all proxy sources in the system.
+# The POST /admin/sources/{source_id}/protect has been moved to
+# app/routers/admin/sources.py (admin/sources.py) for consistency
+# with the DB-driven admin source CRUD flow.
 
-    Returns a paginated list of ALL proxy sources from all users.
-    Only accessible to admin users.
-
-    - **Authentication**: Required (admin role)
-    - **Rate limit**: 30 requests/minute
-    - **Returns**: Paginated list of all sources with owner info
-    """
-    from sqlalchemy import func
-
-    total_result = await session.execute(select(func.count()).select_from(ProxySource))
-    total = total_result.scalar() or 0
-
-    result = await session.execute(
-        select(ProxySource)
-        .limit(limit)
-        .offset(offset)
-        .order_by(ProxySource.created_at.desc())
-    )
-    sources = result.scalars().all()
-
-    return {
-        "total": total,
-        "count": len(sources),
-        "offset": offset,
-        "limit": limit,
-        "sources": [
-            SourceResponse(
-                **{**source.__dict__, "is_owner": source.user_id == current_user.id}
-            )
-            for source in sources
-        ],
-    }
-
-
-@router.post("/admin/sources/{source_id}/protect", response_model=SourceResponse)
-async def admin_protect_source(
-    source_id: int,
-    current_user: User = Depends(require_admin),
-    session: AsyncSession = Depends(get_db),
-):
-    """
-    Admin: Protect a source from user deletion.
-
-    Marks a source as admin-protected, preventing regular users
-    from editing or deleting it. Useful for curated/official sources.
-
-    - **Authentication**: Required (admin role)
-    - **Returns**: Updated SourceResponse with is_admin_source=True
-    """
-    result = await session.execute(
-        select(ProxySource).where(ProxySource.id == source_id)
-    )
-    source = result.scalar_one_or_none()
-
-    if not source:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Source not found"
-        )
-
-    source.is_admin_source = True
-    await session.commit()
-    await session.refresh(source)
-
-    return SourceResponse(
-        **{**source.__dict__, "is_owner": source.user_id == current_user.id}
-    )

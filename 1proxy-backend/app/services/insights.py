@@ -1,8 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from datetime import datetime, timedelta, timezone
-from app.db_models import Proxy, ProxySource, ValidationHistory
-import statistics
+from app.db_models import Proxy, ValidationHistory
 
 
 async def calculate_stability_score(session: AsyncSession, proxy_id: int) -> int:

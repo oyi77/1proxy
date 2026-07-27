@@ -3,7 +3,9 @@ from datetime import datetime, timedelta, timezone
 from app.database import AsyncSessionLocal
 from app.db_storage import db_storage
 from app.grabber import GitHubGrabber, WebGrabber
+from app.grabber.registry import ProviderRegistry
 from app.models import SourceType
+from app.utils import proxy_to_dict
 import logging
 
 logger = logging.getLogger(__name__)
@@ -32,38 +34,14 @@ async def scrape_enabled_sources_once(session) -> dict:
 
             source = SourceConfig(url=source_db.url, type=SourceType(source_db.type))
 
-            # GENERIC_TEXT sources use WebGrabber for HTML parsing
-            # They may be slower but provide fresh proxies from web tables
-            if source.type == SourceType.GENERIC_TEXT:
-                grabber = WebGrabber()
-            elif source.type == SourceType.TOR_EXIT:
-                grabber = WebGrabber()
-            elif source.type == SourceType.GITHUB_RAW:
-                grabber = GitHubGrabber()
-            else:
-                grabber = GitHubGrabber()
+            # Provider/Plugin pattern: registry picks the right grabber
+            # based on SourceType. New providers register themselves
+            # via @register_provider decorator.
+            grabber = ProviderRegistry.get_grabber(source.type)
 
             proxies = await grabber.extract_proxies(source)
 
-            proxies_data = []
-            for p in proxies:
-                data = p.model_dump() if hasattr(p, "model_dump") else p.__dict__
-                proxies_data.append(
-                    {
-                        "url": f"{data.get('protocol', 'http')}://{data.get('ip')}:{data.get('port')}",
-                        "protocol": data.get("protocol", "http"),
-                        "ip": data.get("ip"),
-                        "port": data.get("port"),
-                        "country_code": data.get("country_code"),
-                        "country_name": data.get("country_name"),
-                        "city": data.get("city"),
-                        "latency_ms": data.get("latency_ms"),
-                        "speed_mbps": data.get("speed_mbps"),
-                        "anonymity": data.get("anonymity"),
-                        "proxy_type": data.get("proxy_type"),
-                        "source_id": source_db.id,
-                    }
-                )
+            proxies_data = [proxy_to_dict(p, source_id=source_db.id) for p in proxies]
 
             added = await db_storage.add_proxies(session, proxies_data)
             total_scraped += len(proxies)

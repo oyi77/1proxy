@@ -24,6 +24,25 @@ class ProxyMetrics:
         self.active_proxies = Gauge(
             "active_proxies", "Number of active validated proxies"
         )
+        self.proxy_counter = Counter(
+            "proxies_validated_total",
+            "Total validated proxies",
+            ["status"],
+        )
+        self.proxy_scrape_counter = Counter(
+            "proxies_scraped_total",
+            "Total scraped proxies",
+            ["source_type"],
+        )
+        self.healthcheck_gauge = Gauge(
+            "healthcheck_alive",
+            "Proxies marked alive by healthcheck",
+        )
+        self.worker_health_gauge = Gauge(
+            "background_workers",
+            "Background worker health",
+            ["worker_name"],
+        )
 
 
 metrics_app = make_asgi_app()

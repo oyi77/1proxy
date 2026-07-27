@@ -4,9 +4,6 @@ rate limiting, and performance monitoring.
 """
 
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timezone
-import asyncio
-import time
 import logging
 
 from app.grabber.scraping_utils import (

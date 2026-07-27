@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from typing import List
-import asyncio
 from app.models.proxy import Proxy
 from app.models.source import SourceConfig, SourceType
 from app.grabber.patterns import ProxyPatterns

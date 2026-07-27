@@ -496,5 +496,47 @@
     "type": "github_raw",
     "enabled": true,
     "name": "openproxylist.xyz"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/VPSLabCloud/VPSLab-Free-Proxy-List/main/http_all.txt",
+    "type": "github_raw",
+    "enabled": true,
+    "name": "VPSLab-http"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/VPSLabCloud/VPSLab-Free-Proxy-List/main/http_ssl_elite.txt",
+    "type": "github_raw",
+    "enabled": true,
+    "name": "VPSLab-ssl-elite"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/VPSLabCloud/VPSLab-Free-Proxy-List/main/socks4_all.txt",
+    "type": "github_raw",
+    "enabled": true,
+    "name": "VPSLab-socks4"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/VPSLabCloud/VPSLab-Free-Proxy-List/main/socks5_all.txt",
+    "type": "github_raw",
+    "enabled": true,
+    "name": "VPSLab-socks5"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/shiftytr/proxy-list/master/proxy.txt",
+    "type": "github_raw",
+    "enabled": true,
+    "name": "ShiftyTR"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/ALIILAPRO/Proxy/main/http.txt",
+    "type": "github_raw",
+    "enabled": true,
+    "name": "ALIILAPRO-http"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/almroot/proxylist/master/list.txt",
+    "type": "github_raw",
+    "enabled": true,
+    "name": "almroot"
   }
 ]

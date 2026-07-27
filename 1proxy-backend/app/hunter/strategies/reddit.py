@@ -42,7 +42,7 @@ class RedditStrategy(BaseStrategy):
 
                         data = await response.json()
                         for post in data.get("data", {}).get("children", []):
-                            content = post["data"].get("selftext", "")
+                            _ = post["data"].get("selftext", "")
                             # Basic URL extraction could go here, but for now we return post URL
                             # or leave extraction to the UniversalExtractor if the content IS the list.
                             # We'll assume the selftext might contain external URLs or be the list itself.

@@ -5,14 +5,13 @@ Hunter Protocol integration, and performance monitoring.
 """
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_, desc, asc, update
+from sqlalchemy import select, func, update, desc, and_
 from sqlalchemy.orm import selectinload
 from typing import List, Optional, Dict, Tuple
 from datetime import datetime, timedelta, timezone
 import logging
-import json
 
-from app.db_models import User, ProxySource, Proxy, CandidateSource
+from app.db_models import CandidateSource, Proxy
 from app.db_storage import DatabaseStorage
 
 logger = logging.getLogger(__name__)

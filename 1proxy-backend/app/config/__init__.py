@@ -1,20 +1,26 @@
 import os
 import secrets
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Get project root
 BASE_DIR = Path(__file__).parent.parent.parent
+
+# Persistent secret key: read from file or generate & write on first run.
+_SECRET_KEY_FILE = BASE_DIR / ".secret_key"
+if os.getenv("SECRET_KEY"):
+    _DEFAULT_SECRET = os.environ["SECRET_KEY"]
+elif _SECRET_KEY_FILE.exists():
+    _DEFAULT_SECRET = _SECRET_KEY_FILE.read_text().strip()
+else:
+    _DEFAULT_SECRET = secrets.token_urlsafe(32)
+    _SECRET_KEY_FILE.write_text(_DEFAULT_SECRET)
 
 
 class Settings(BaseSettings):
-    # App Settings
     PROJECT_NAME: str = "1proxy"
     API_V1_STR: str = "/api/v1"
 
-    # SECRET_KEY: Auto-generate secure default for development.
-    # IMPORTANT: Set this in production via environment variable!
-    SECRET_KEY: str = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
+    SECRET_KEY: str = _DEFAULT_SECRET
 
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 

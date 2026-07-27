@@ -4,14 +4,14 @@ Scraping Utilities
 Helper functions untuk enhanced scraping dengan rate limiting,
 error handling, dan performance optimization.
 """
-
-import asyncio
 import logging
-import time
 import random
+import time
+import uuid
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 

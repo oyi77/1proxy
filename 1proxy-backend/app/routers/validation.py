@@ -1,7 +1,11 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
-from app.validator import proxy_validator, ValidationResult
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from app.validator import proxy_validator
+
+limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/api/v1/validate", tags=["validation"])
 
@@ -24,7 +28,8 @@ class ValidateProxyResponse(BaseModel):
 
 
 @router.post("/proxy", response_model=ValidateProxyResponse)
-async def validate_proxy(request: ValidateProxyRequest):
+@limiter.limit("10/minute")
+async def validate_proxy(request: Request, body: ValidateProxyRequest):
     """
     Validate a single proxy by testing its connectivity.
 
@@ -46,17 +51,17 @@ async def validate_proxy(request: ValidateProxyRequest):
     }
     ```
     """
-    if not request.ip:
+    if not body.ip:
         try:
-            ip_port = request.proxy_url.replace("http://", "").replace("https://", "").replace("socks4://", "").replace("socks5://", "")
+            ip_port = body.proxy_url.replace("http://", "").replace("https://", "").replace("socks4://", "").replace("socks5://", "")
             ip = ip_port.split(":")[0]
         except Exception:
             raise HTTPException(status_code=400, detail="Could not extract IP from proxy_url. Please provide IP explicitly.")
     else:
-        ip = request.ip
+        ip = body.ip
     
     try:
-        result = await proxy_validator.validate_comprehensive(request.proxy_url, ip)
+        result = await proxy_validator.validate_comprehensive(body.proxy_url, ip)
         
         quality_score = None
         if result.success:
@@ -83,9 +88,10 @@ async def validate_proxy(request: ValidateProxyRequest):
 
 
 @router.post("/proxy/format", response_model=dict)
-async def validate_proxy_format(request: ValidateProxyRequest):
-    is_valid = await proxy_validator.validate_format(request.proxy_url)
+@limiter.limit("30/minute")
+async def validate_proxy_format(request: Request, body: ValidateProxyRequest):
+    is_valid = await proxy_validator.validate_format(body.proxy_url)
     return {
         "valid": is_valid,
-        "proxy_url": request.proxy_url
+        "proxy_url": body.proxy_url
     }

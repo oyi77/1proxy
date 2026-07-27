@@ -1,5 +1,4 @@
 from typing import List
-import aiohttp
 import asyncio
 from app.hunter.strategy import BaseStrategy
 import logging

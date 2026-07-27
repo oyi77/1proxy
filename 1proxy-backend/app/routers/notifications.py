@@ -1,13 +1,17 @@
-from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
-from typing import List, Optional
-from datetime import datetime, timezone
+from typing import List
+from datetime import datetime
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.database import get_db
 from app.dependencies import require_user
 from app.db_models import User
 from app.db_storage import db_storage
+
+limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/api/v1", tags=["notifications"])
 
@@ -43,7 +47,9 @@ async def create_notification(
 
 
 @router.get("/notifications", response_model=List[NotificationResponse])
+@limiter.limit("30/minute")
 async def get_notifications(
+    request: Request,
     current_user: User = Depends(require_user),
     unread_only: bool = False,
     db: AsyncSession = Depends(get_db),
@@ -63,7 +69,9 @@ async def get_notifications(
 
 
 @router.post("/notifications/{notification_id}/read")
+@limiter.limit("30/minute")
 async def mark_notification_read(
+    request: Request,
     notification_id: int,
     current_user: User = Depends(require_user),
     db: AsyncSession = Depends(get_db),
@@ -87,7 +95,9 @@ async def mark_notification_read(
 
 
 @router.post("/notifications/read-all")
+@limiter.limit("10/minute")
 async def mark_all_read(
+    request: Request,
     current_user: User = Depends(require_user), db: AsyncSession = Depends(get_db)
 ):
     """

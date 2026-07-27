@@ -2,8 +2,8 @@ import logging
 import aiohttp
 import asyncio
 from datetime import datetime, timezone
-from typing import List, Optional
-from sqlalchemy import select, func
+from typing import List
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db

@@ -1,8 +1,6 @@
 import re
-import base64
 import logging
-from typing import List, Optional
-import aiohttp
+from typing import List
 from bs4 import BeautifulSoup
 
 from app.models.proxy import Proxy

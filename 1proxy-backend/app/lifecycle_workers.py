@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
-from sqlalchemy import select, and_, or_, func, delete
+from sqlalchemy import select, and_, or_
 from app.database import AsyncSessionLocal
 from app.db_storage import db_storage
 from app.db_models import Proxy

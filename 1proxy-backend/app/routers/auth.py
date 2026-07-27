@@ -1,9 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, Cookie, Request
+from fastapi import APIRouter, Depends, HTTPException, Response, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from typing import Optional
-import os
 from urllib.parse import urlencode, urlparse, urlunparse
 
 from app.database import get_db

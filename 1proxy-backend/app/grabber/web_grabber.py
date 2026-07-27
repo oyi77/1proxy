@@ -5,8 +5,12 @@ from bs4 import BeautifulSoup
 import os
 from typing import List
 from app.grabber.base import BaseGrabber
-from app.models.source import SourceConfig
+from app.models.source import SourceConfig, SourceType
 from app.models.proxy import Proxy
+from app.grabber.registry import ProviderRegistry
+
+@ProviderRegistry.register(SourceType.GENERIC_TEXT)
+@ProviderRegistry.register(SourceType.TOR_EXIT)
 
 
 class WebGrabber(BaseGrabber):
@@ -91,7 +95,7 @@ class WebGrabber(BaseGrabber):
                     continue
                 raise
 
-            except aiohttp.ClientError as e:
+            except aiohttp.ClientError:
                 if attempt < self.max_retries - 1:
                     await asyncio.sleep(self.retry_delay)
                     continue

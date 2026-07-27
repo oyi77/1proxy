@@ -1,4 +1,5 @@
 # Virtual Environments
+.secret_key
 backend-venv/
 venv/
 env/
