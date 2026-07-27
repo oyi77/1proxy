@@ -231,6 +231,45 @@ export interface AdvancedScrapingConfig {
   test_urls?: string[];
 }
 
+export interface AdminSource {
+  id: number;
+  url: string;
+  type: string;
+  name?: string;
+  description?: string;
+  enabled: boolean;
+  validated: boolean;
+  total_scraped: number;
+  success_rate: number;
+  last_scraped: string | null;
+  created_at: string | null;
+  is_admin_source: boolean;
+}
+
+export interface AdminSourcesResponse {
+  total: number;
+  count: number;
+  offset: number;
+  limit: number;
+  sources: AdminSource[];
+}
+
+export interface AdminSourceCreateRequest {
+  url: string;
+  type: string;
+  name?: string;
+  description?: string;
+  enabled?: boolean;
+}
+
+export interface AdminSourceUpdateRequest {
+  name?: string;
+  description?: string;
+  enabled?: boolean;
+  url?: string;
+  type?: string;
+}
+
 export const api = {
   async getStats(): Promise<Stats> {
     const res = await apiFetch(`${API_BASE}/api/v1/stats`);
@@ -530,6 +569,63 @@ export const api = {
       }
     );
     if (!res.ok) throw new Error("Failed to clear queue");
+    return res.json();
+  },
+
+  // ── Admin Sources (DB-driven) ──
+
+  async getAdminSources(params?: {
+    limit?: number;
+    offset?: number;
+  }): Promise<AdminSourcesResponse> {
+    const query = new URLSearchParams();
+    if (params?.limit) query.set("limit", params.limit.toString());
+    if (params?.offset) query.set("offset", params.offset.toString());
+    const res = await apiFetch(
+      `${API_BASE}/api/v1/admin/sources?${query}`
+    );
+    if (!res.ok) throw new Error("Failed to fetch admin sources");
+    return res.json();
+  },
+
+  async createAdminSource(
+    data: AdminSourceCreateRequest
+  ): Promise<{ message: string; source_id: number; url: string; type: string; name: string }> {
+    const res = await apiFetch(`${API_BASE}/api/v1/admin/sources`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(await extractApiError(res, "Failed to create admin source"));
+    return res.json();
+  },
+
+  async updateAdminSource(
+    sourceId: number,
+    data: AdminSourceUpdateRequest
+  ): Promise<{ message: string }> {
+    const res = await apiFetch(`${API_BASE}/api/v1/admin/sources/${sourceId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(await extractApiError(res, "Failed to update admin source"));
+    return res.json();
+  },
+
+  async deleteAdminSource(sourceId: number): Promise<{ message: string }> {
+    const res = await apiFetch(`${API_BASE}/api/v1/admin/sources/${sourceId}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) throw new Error(await extractApiError(res, "Failed to delete admin source"));
+    return res.json();
+  },
+
+  async seedAdminSources(): Promise<{ message: string; count: number }> {
+    const res = await apiFetch(`${API_BASE}/api/v1/admin/seed-sources`, {
+      method: "POST",
+    });
+    if (!res.ok) throw new Error(await extractApiError(res, "Failed to seed admin sources"));
     return res.json();
   },
 

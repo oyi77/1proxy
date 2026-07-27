@@ -5,8 +5,9 @@ import { useTheme } from "@/app/theme-provider";
 import { api, type ValidationStats, type QualityDistribution } from "@/lib/api";
 import { ScrapingSessionTab } from "@/components/tabs/ScrapingSessionTab";
 import { ScrapingConfigTab } from "@/components/tabs/ScrapingConfigTab";
+import AdminSourcesTab from "./AdminSourcesTab";
 
-type TabType = "overview" | "scraping-sessions" | "scraping-config";
+type TabType = "overview" | "scraping-sessions" | "scraping-config" | "sources";
 
 export default function AdminPage() {
   const { theme } = useTheme();
@@ -42,6 +43,7 @@ export default function AdminPage() {
     { id: "overview", label: "Overview" },
     { id: "scraping-sessions", label: "Scraping Sessions" },
     { id: "scraping-config", label: "Scraping Config" },
+    { id: "sources", label: "Sources" },
   ];
 
   if (loading && activeTab === "overview") {
@@ -304,6 +306,10 @@ export default function AdminPage() {
 
         {activeTab === "scraping-config" && (
           <ScrapingConfigTab theme={theme} />
+        )}
+
+        {activeTab === "sources" && (
+          <AdminSourcesTab theme={theme} />
         )}
       </div>
     </div>

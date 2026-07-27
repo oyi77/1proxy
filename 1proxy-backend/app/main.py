@@ -12,7 +12,6 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from app.models import SourceConfig, SourceType
 from app.grabber import GitHubGrabber
-from app.sources import SourceRegistry
 from app.database import (
     init_db,
     AsyncSessionLocal,
@@ -32,7 +31,6 @@ from app.metrics import metrics_app
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
 
 # Configure logging
 logging.basicConfig(
@@ -545,15 +543,16 @@ async def list_sources(session: AsyncSession = Depends(get_db)):
 @app.post("/api/v1/proxies/scrape-all")
 async def scrape_all_sources(current_user: User = Depends(require_admin)):
     async with AsyncSessionLocal() as session:
-        sources = SourceRegistry.get_enabled_sources()
+        sources = await db_storage.get_sources(session, enabled_only=True)
         results = []
         total_scraped = 0
         total_added = 0
         total_validated = 0
         total_failed = 0
 
-        for source in sources:
+        for source_db in sources:
             try:
+                source = SourceConfig(url=source_db.url, type=SourceType(source_db.type))
                 proxies = await grabber.extract_proxies(source)
                 proxies_data = []
                 for p in proxies:
@@ -596,7 +595,7 @@ async def scrape_all_sources(current_user: User = Depends(require_admin)):
             except Exception as e:
                 results.append(
                     {
-                        "url": str(source.url),
+                        "url": str(source_db.url),
                         "status": "failed",
                         "error": str(e),
                         "scraped": 0,

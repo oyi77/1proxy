@@ -1,29 +1,37 @@
 """Tests for Sprint 1 improvements: stale purge, reliability scoring, new sources."""
 import pytest
+import json, os
 from unittest.mock import AsyncMock, MagicMock, patch
-from app.sources import SourceRegistry
 from app.db_storage import db_storage
 
 
 class TestNewSources:
-    """3A — 8 new proxy sources added to the registry."""
+    """3A — 8+ new proxy sources in the admin_sources.json seed."""
 
-    def test_sources_count_increased(self):
+    @pytest.fixture
+    def admin_sources(self):
+        json_path = os.path.join(
+            os.path.dirname(__file__), "../../app/data/admin_sources.json"
+        )
+        with open(json_path) as f:
+            return json.load(f)
+
+    def test_sources_count_increased(self, admin_sources):
         """Should have 26+ sources (was ~18 before Sprint 1)."""
-        assert len(SourceRegistry.SOURCES) >= 26, (
-            f"Expected >= 26 sources, got {len(SourceRegistry.SOURCES)}"
+        assert len(admin_sources) >= 26, (
+            f"Expected >= 26 sources, got {len(admin_sources)}"
         )
 
-    def test_new_sources_have_valid_types(self):
+    def test_new_sources_have_valid_types(self, admin_sources):
         """All sources should have valid attributes."""
-        for s in SourceRegistry.SOURCES:
-            assert hasattr(s, "type"), f"Source {s.url} missing type"
-            assert hasattr(s, "url"), f"Source missing url"
-            assert s.url, f"Source has empty url"
+        for s in admin_sources:
+            assert "type" in s, f"Source {s['url']} missing type"
+            assert "url" in s, f"Source missing url"
+            assert s["url"], f"Source has empty url"
 
-    def test_specific_new_sources_present(self):
-        """Known Sprint 1 sources should be in the registry."""
-        urls = {s.url for s in SourceRegistry.SOURCES}
+    def test_specific_new_sources_present(self, admin_sources):
+        """Known Sprint 1 sources should be in the JSON seed."""
+        urls = {s["url"] for s in admin_sources}
         expected_fragments = [
             "spys.me/proxy.txt",
             "free-proxy-list.net",
@@ -39,10 +47,10 @@ class TestNewSources:
                 f"Missing source containing: {fragment}"
             )
 
-    def test_all_sources_enabled(self):
-        """Default sources in registry should be enabled."""
-        for s in SourceRegistry.SOURCES:
-            assert s.enabled, f"Source {s.url} is not enabled"
+    def test_all_sources_enabled(self, admin_sources):
+        """Default sources in JSON seed should be enabled."""
+        for s in admin_sources:
+            assert s.get("enabled", True), f"Source {s['url']} is not enabled"
 
 
 class TestPurgeDeadProxies:

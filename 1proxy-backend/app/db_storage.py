@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 import logging
 
 from app.db_models import User, ProxySource, Proxy, SourceTrustScore, ProxyPerformanceHistory
-from app.validator import optimized_validator, get_default_config, ProxyValidationConfig
+from app.validator import optimized_validator, ProxyValidationConfig
 
 logger = logging.getLogger(__name__)
 
@@ -37,30 +37,43 @@ class DatabaseStorage:
         return user
 
     async def seed_admin_sources(self, session: AsyncSession, admin_user_id: int):
-        from app.sources import SourceRegistry
+        """Seed admin sources from admin_sources.json if table is empty."""
+        import json, os
 
-        for source_config in SourceRegistry.SOURCES:
+        json_path = os.path.join(
+            os.path.dirname(__file__), "data", "admin_sources.json"
+        )
+        if not os.path.exists(json_path):
+            logger.warning(f"⚠️  admin_sources.json not found at {json_path}")
+            return
+
+        with open(json_path) as f:
+            sources_data = json.load(f)
+
+        count = 0
+        for entry in sources_data:
             result = await session.execute(
-                select(ProxySource).where(ProxySource.url == str(source_config.url))
+                select(ProxySource).where(ProxySource.url == entry["url"])
             )
-            existing = result.scalar_one_or_none()
+            if result.scalar_one_or_none():
+                continue
 
-            if not existing:
-                source = ProxySource(
-                    user_id=admin_user_id,
-                    url=str(source_config.url),
-                    type=source_config.type.value
-                    if hasattr(source_config.type, "value")
-                    else str(source_config.type),
-                    name=str(source_config.url).split("/")[-2],
-                    enabled=source_config.enabled,
-                    validated=True,
-                    is_admin_source=True,
-                    is_paid=False,
-                )
-                session.add(source)
+            source = ProxySource(
+                user_id=admin_user_id,
+                url=entry["url"],
+                type=entry["type"],
+                name=entry.get("name") or entry["url"].split("/")[-2],
+                enabled=entry.get("enabled", True),
+                validated=True,
+                is_admin_source=True,
+                is_paid=False,
+            )
+            session.add(source)
+            count += 1
 
-        await session.commit()
+        if count:
+            await session.commit()
+            logger.info(f"✅ Seeded {count} admin sources from JSON")
 
     async def add_proxy(
         self, session: AsyncSession, proxy_data: dict, source_id: Optional[int] = None
@@ -102,7 +115,7 @@ class DatabaseStorage:
             return None
 
         if self.enable_validation:
-            validation_result = await proxy_validator.validate_comprehensive(url, ip)
+            validation_result = await optimized_validator.validate_comprehensive(url, ip)
 
             if not validation_result.success:
                 return None
@@ -781,7 +794,6 @@ class DatabaseStorage:
 
         Returns dict of {source_id: trust_score} and which sources were disabled.
         """
-        from sqlalchemy import update as sa_update
 
         # Get all sources
         sources_result = await session.execute(select(ProxySource))
@@ -860,7 +872,6 @@ class DatabaseStorage:
         Returns number of proxies updated.
         """
         from sqlalchemy import update as sa_update
-        from sqlalchemy import bindparam
 
         updated = 0
         # Get all trust scores
@@ -1049,6 +1060,103 @@ class DatabaseStorage:
             "stale_pct": round(stale / total * 100, 1) if total else 0,
             "dead_pct": round(dead / total * 100, 1) if total else 0,
         }
+
+
+    # ──────────────────────────────────────────
+    # Admin source CRUD — fully DB-driven
+    # ──────────────────────────────────────────
+
+    async def get_admin_sources(
+        self,
+        session: AsyncSession,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[List[ProxySource], int]:
+        """Get paginated list of admin (is_admin_source) sources."""
+        total_result = await session.execute(
+            select(func.count()).select_from(ProxySource).where(ProxySource.is_admin_source.is_(True))
+        )
+        total = total_result.scalar() or 0
+
+        result = await session.execute(
+            select(ProxySource)
+            .where(ProxySource.is_admin_source.is_(True))
+            .order_by(ProxySource.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        return list(result.scalars().all()), total
+
+    async def create_admin_source(
+        self,
+        session: AsyncSession,
+        url: str,
+        source_type: str,
+        admin_user_id: int,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        enabled: bool = True,
+    ) -> ProxySource:
+        """Create a new admin-managed source."""
+        source = ProxySource(
+            user_id=admin_user_id,
+            url=url,
+            type=source_type,
+            name=name or url.split("/")[-2],
+            description=description,
+            enabled=enabled,
+            validated=False,
+            is_admin_source=True,
+            is_paid=False,
+        )
+        session.add(source)
+        await session.commit()
+        await session.refresh(source)
+        return source
+
+    async def update_admin_source(
+        self,
+        session: AsyncSession,
+        source_id: int,
+        **kwargs,
+    ) -> Optional[ProxySource]:
+        """Update an admin source. Only allow safe fields."""
+        result = await session.execute(
+            select(ProxySource).where(
+                ProxySource.id == source_id,
+                ProxySource.is_admin_source.is_(True),
+            )
+        )
+        source = result.scalar_one_or_none()
+        if not source:
+            return None
+
+        allowed = {"name", "description", "enabled", "type", "url"}
+        for key, value in kwargs.items():
+            if key in allowed and value is not None:
+                setattr(source, key, value)
+
+        await session.commit()
+        await session.refresh(source)
+        return source
+
+    async def delete_admin_source(
+        self, session: AsyncSession, source_id: int
+    ) -> bool:
+        """Delete an admin source."""
+        result = await session.execute(
+            select(ProxySource).where(
+                ProxySource.id == source_id,
+                ProxySource.is_admin_source.is_(True),
+            )
+        )
+        source = result.scalar_one_or_none()
+        if not source:
+            return False
+
+        await session.delete(source)
+        await session.commit()
+        return True
 
 
 db_storage = DatabaseStorage()

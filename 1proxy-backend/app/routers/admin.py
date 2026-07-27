@@ -10,6 +10,9 @@ from app.db_storage import db_storage
 from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
+import logging
+
+logger = logging.getLogger(__name__)
 
 # All admin endpoints require admin role
 router = APIRouter(
@@ -370,41 +373,155 @@ async def get_recent_validations(
 
 @router.post("/seed-sources")
 @limiter.limit("5/minute")
-async def seed_sources(request: Request, session: AsyncSession = Depends(get_db)):
-    """
-    Manually seed admin sources. Use if sources are empty.
-    """
-    from app.sources import SourceRegistry
-
-    admin_user = await session.execute(
-        select(User).where(User.role == "admin").limit(1)
+async def seed_sources(request: Request, current_user: User = Depends(require_admin), session: AsyncSession = Depends(get_db)):
+    """Manually seed admin sources from admin_sources.json."""
+    count_before = await session.execute(
+        select(func.count()).select_from(ProxySource).where(ProxySource.is_admin_source.is_(True))
     )
-    admin = admin_user.scalar_one_or_none()
+    if count_before.scalar() or 0 > 0:
+        return {"message": "Admin sources already seeded, skipping", "count": 0}
 
-    if not admin:
-        raise HTTPException(status_code=400, detail="No admin user found")
+    await db_storage.seed_admin_sources(session, current_user.id)
+    count_after = await session.execute(
+        select(func.count()).select_from(ProxySource).where(ProxySource.is_admin_source.is_(True))
+    )
+    seeded = count_after.scalar() or 0
+    logger.info(f"Admin {current_user.email} seeded {seeded} admin sources")
+    return {"message": "Seeded admin sources from JSON", "count": seeded}
 
-    count = 0
-    for source_config in SourceRegistry.SOURCES:
-        existing = await session.execute(
-            select(ProxySource).where(ProxySource.url == str(source_config.url))
-        )
-        if not existing.scalar_one_or_none():
-            source = ProxySource(
-                user_id=admin.id,
-                url=str(source_config.url),
-                type=source_config.type.value if hasattr(source_config.type, "value") else str(source_config.type),
-                name=str(source_config.url).split("/")[-2],
-                enabled=source_config.enabled,
-                validated=True,
-                is_admin_source=True,
-                is_paid=False,
-            )
-            session.add(source)
-            count += 1
 
-    await session.commit()
-    return {"message": f"Seeded {count} sources"}
+# ── Admin source CRUD (fully DB-driven) ──
+
+
+class AdminSourceCreate(BaseModel):
+    url: str
+    type: str
+    name: Optional[str] = None
+    description: Optional[str] = None
+    enabled: bool = True
+
+
+class AdminSourceUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    enabled: Optional[bool] = None
+    url: Optional[str] = None
+    type: Optional[str] = None
+
+
+@router.get("/sources", response_model=dict)
+@limiter.limit("30/minute")
+async def admin_list_sources(
+    request: Request,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    current_user: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+):
+    """List all admin-managed proxy sources."""
+    sources, total = await db_storage.get_admin_sources(session, limit=limit, offset=offset)
+    return {
+        "total": total,
+        "count": len(sources),
+        "offset": offset,
+        "limit": limit,
+        "sources": [
+            {
+                "id": s.id,
+                "url": s.url,
+                "type": s.type,
+                "name": s.name,
+                "description": s.description,
+                "enabled": s.enabled,
+                "validated": s.validated,
+                "total_scraped": s.total_scraped,
+                "success_rate": s.success_rate,
+                "last_scraped": s.last_scraped.isoformat() if s.last_scraped else None,
+                "created_at": s.created_at.isoformat() if s.created_at else None,
+                "is_admin_source": s.is_admin_source,
+            }
+            for s in sources
+        ],
+    }
+
+
+@router.post("/sources", status_code=201)
+@limiter.limit("10/minute")
+async def admin_create_source(
+    request: Request,
+    data: AdminSourceCreate,
+    current_user: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+):
+    """Add a new admin-managed proxy source."""
+    # Check duplicate
+    existing = await session.execute(
+        select(ProxySource).where(ProxySource.url == data.url)
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Source URL already exists")
+
+    source = await db_storage.create_admin_source(
+        session=session,
+        url=data.url,
+        source_type=data.type,
+        admin_user_id=current_user.id,
+        name=data.name,
+        description=data.description,
+        enabled=data.enabled,
+    )
+    logger.info(f"Admin {current_user.email} created source #{source.id} — {data.url}")
+    return {
+        "message": "Admin source created",
+        "source_id": source.id,
+        "url": source.url,
+        "type": source.type,
+        "name": source.name,
+    }
+
+
+@router.put("/sources/{source_id}")
+@limiter.limit("30/minute")
+async def admin_update_source(
+    request: Request,
+    source_id: int,
+    data: AdminSourceUpdate,
+    current_user: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+):
+    """Update an admin-managed proxy source."""
+    source = await db_storage.update_admin_source(
+        session=session,
+        source_id=source_id,
+        **data.model_dump(exclude_none=True),
+    )
+    if not source:
+        raise HTTPException(status_code=404, detail="Admin source not found")
+    logger.info(f"Admin {current_user.email} updated source #{source_id} — {source.url}")
+    return {
+        "message": "Source updated",
+        "id": source.id,
+        "url": source.url,
+        "type": source.type,
+        "name": source.name,
+        "enabled": source.enabled,
+    }
+
+
+@router.delete("/sources/{source_id}")
+@limiter.limit("10/minute")
+async def admin_delete_source(
+    request: Request,
+    source_id: int,
+    current_user: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+):
+    """Delete an admin-managed proxy source."""
+    deleted = await db_storage.delete_admin_source(session, source_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Admin source not found")
+    logger.info(f"Admin {current_user.email} deleted source #{source_id}")
+    return {"message": "Source deleted", "source_id": source_id}
 
 
 @router.post("/cleanup/purge-failed", summary="Purge 3-strike failed proxies")
@@ -452,10 +569,8 @@ async def recalc_priority_tiers(admin_user=Depends(require_admin), session: Asyn
 
 @router.get("/lifecycle/stats", summary="Get proxy lifecycle statistics")
 async def get_lifecycle_stats(session: AsyncSession = Depends(get_db)):
-    from sqlalchemy import text, func as sa_func
+    from sqlalchemy import func as sa_func
     from app.db_models import Proxy
-    from datetime import datetime, timedelta, timezone
-
     now = datetime.now(timezone.utc).replace(tzinfo=None)
 
     # Total by tier
