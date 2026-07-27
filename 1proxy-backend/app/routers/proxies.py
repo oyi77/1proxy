@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 from datetime import datetime
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -38,6 +38,18 @@ class ProxyResponse(BaseModel):
     is_working: bool
     validation_status: Optional[str]
     last_validated: Optional[str]
+
+    @computed_field
+    @property
+    def last_seen_hours_ago(self) -> Optional[float]:
+        if self.last_validated is None:
+            return None
+        try:
+            lv = datetime.fromisoformat(self.last_validated)
+            delta = (datetime.utcnow() - lv.replace(tzinfo=None)).total_seconds() / 3600
+            return round(delta, 1)
+        except (ValueError, TypeError):
+            return None
 
     model_config = {"from_attributes": True}
 

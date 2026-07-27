@@ -498,3 +498,31 @@ async def get_lifecycle_stats(session: AsyncSession = Depends(get_db)):
             "stale_over_12h": stale_12h_plus.scalar(),
         },
     }
+
+
+@router.get("/metrics/quality-trend", summary="30-day quality score trend")
+async def get_quality_trend(
+    days: int = Query(30, description="Number of days of history"),
+    admin_user=Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+):
+    """Daily average quality_score over the last N days."""
+    return await db_storage.get_quality_trend(session, days=days)
+
+
+@router.get("/metrics/source-effectiveness", summary="Sources ranked by validation rate")
+async def get_source_effectiveness(
+    admin_user=Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+):
+    """All sources ranked by validated/total proxy ratio."""
+    return await db_storage.get_source_effectiveness(session)
+
+
+@router.get("/metrics/staleness", summary="Proxy staleness breakdown")
+async def get_staleness_stats(
+    admin_user=Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+):
+    """Fresh/stale/dead/pending breakdown with percentages."""
+    return await db_storage.get_staleness_stats(session)

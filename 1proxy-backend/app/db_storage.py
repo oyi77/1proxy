@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, delete, or_
+from sqlalchemy import select, func, and_, delete, or_, case
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from datetime import datetime, timedelta
@@ -932,6 +932,114 @@ class DatabaseStorage:
 
         await session.commit()
         return result1.rowcount + result2.rowcount + result3.rowcount + result4.rowcount
+
+    async def get_quality_trend(self, session: AsyncSession, days: int = 30) -> List[dict]:
+        """Daily avg quality_score over the last N days."""
+        cutoff = datetime.utcnow() - timedelta(days=days)
+        rows = await session.execute(
+            select(
+                func.date(Proxy.last_validated).label("date"),
+                func.avg(Proxy.quality_score).label("avg_quality"),
+                func.count(Proxy.id).label("proxy_count"),
+            )
+            .where(
+                Proxy.last_validated >= cutoff,
+                Proxy.quality_score.isnot(None),
+                Proxy.validation_status == "validated",
+            )
+            .group_by(func.date(Proxy.last_validated))
+            .order_by(func.date(Proxy.last_validated))
+        )
+        return [
+            {
+                "date": str(row.date),
+                "avg_quality": round(float(row.avg_quality), 1) if row.avg_quality else 0,
+                "proxy_count": row.proxy_count,
+            }
+            for row in rows
+        ]
+
+    async def get_source_effectiveness(self, session: AsyncSession) -> List[dict]:
+        """Sources ranked by validation rate."""
+        rows = await session.execute(
+            select(
+                ProxySource.id,
+                ProxySource.url,
+                func.count(Proxy.id).label("total"),
+                func.sum(
+                    case((Proxy.validation_status == "validated", 1), else_=0)
+                ).label("validated_count"),
+                func.sum(
+                    case((Proxy.validation_status == "failed", 1), else_=0)
+                ).label("failed_count"),
+            )
+            .join(ProxySource, Proxy.source_id == ProxySource.id, isouter=True)
+            .group_by(ProxySource.id, ProxySource.url)
+            .order_by(func.count(Proxy.id).desc())
+        )
+        results = []
+        for row in rows:
+            total = row.total or 0
+            validated = row.validated_count or 0
+            failed = row.failed_count or 0
+            validation_rate = round((validated / (validated + failed)) * 100, 1) if (validated + failed) > 0 else 0
+            results.append({
+                "source_id": row.id,
+                "url": row.url[:80] if row.url else "unknown",
+                "total_proxies": total,
+                "validated": validated,
+                "failed": failed,
+                "validation_rate": validation_rate,
+            })
+        return results
+
+    async def get_staleness_stats(self, session: AsyncSession) -> dict:
+        """Proxy staleness breakdown."""
+        total = await session.scalar(select(func.count(Proxy.id)))
+        if not total:
+            total = 0
+
+        # Fresh: validated within 6h
+        fresh_cutoff = datetime.utcnow() - timedelta(hours=6)
+        fresh = await session.scalar(
+            select(func.count(Proxy.id)).where(
+                Proxy.is_working == True,
+                Proxy.last_validated >= fresh_cutoff,
+            )
+        ) or 0
+
+        # Stale: validated > 6h ago but still marked working
+        stale = await session.scalar(
+            select(func.count(Proxy.id)).where(
+                Proxy.is_working == True,
+                Proxy.last_validated < fresh_cutoff,
+            )
+        ) or 0
+
+        # Dead: explicitly failed
+        dead = await session.scalar(
+            select(func.count(Proxy.id)).where(
+                Proxy.is_working == False,
+            )
+        ) or 0
+
+        # Pending: never validated
+        pending = await session.scalar(
+            select(func.count(Proxy.id)).where(
+                Proxy.validation_status == "pending",
+            )
+        ) or 0
+
+        return {
+            "total": total,
+            "fresh": fresh,
+            "stale": stale,
+            "dead": dead,
+            "pending": pending,
+            "fresh_pct": round(fresh / total * 100, 1) if total else 0,
+            "stale_pct": round(stale / total * 100, 1) if total else 0,
+            "dead_pct": round(dead / total * 100, 1) if total else 0,
+        }
 
 
 db_storage = DatabaseStorage()

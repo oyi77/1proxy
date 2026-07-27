@@ -186,21 +186,38 @@ class OptimizedProxyValidator:
             await self.connector.close()
     
     # ===== PHASE 1: FAST CONNECTIVITY CHECK =====
-    
+
+    @staticmethod
+    def _normalize_proxy_url(proxy_url: str) -> str:
+        """Convert SOCKS proxy URLs to HTTP for compatibility.
+
+        aiohttp's TCPConnector doesn't support SOCKS natively, but many
+        SOCKS4/SOCKS5 proxies also accept HTTP traffic on the same port.
+        Normalize the URL so we can test connectivity via HTTP.
+        """
+        if not proxy_url:
+            return proxy_url
+        if proxy_url.startswith("socks5://") or proxy_url.startswith("socks4://"):
+            return "http://" + proxy_url.split("://", 1)[1]
+        return proxy_url
+
     async def validate_connectivity_fast(self, proxy_url: str) -> Tuple[bool, Optional[int], Optional[str]]:
         """
         Ultra-fast connectivity check with minimal overhead.
         Returns (success, latency_ms, error_message)
         """
         await self._ensure_session()
-        
+
+        # Normalize SOCKS URLs for HTTP compatibility
+        check_url = self._normalize_proxy_url(proxy_url)
+
         # Single attempt, no retry for fast check
         try:
             start = time.perf_counter()
             async with self.semaphore:
                 async with self.session.get(
                     "http://httpbin.org/ip",
-                    proxy=proxy_url,
+                    proxy=check_url,
                     ssl=False,
                     allow_redirects=False,
                     timeout=aiohttp.ClientTimeout(
