@@ -11,7 +11,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 ENV PYTHONPATH=/app
+RUN useradd -r -M -d /app -s /usr/sbin/nologin appuser && chown -R appuser:appuser /app
+
+USER appuser
 
 EXPOSE 5555
-
 CMD ["sh", "/app/scripts/docker-start.sh"]
