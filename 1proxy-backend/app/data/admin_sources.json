@@ -538,5 +538,11 @@
     "type": "github_raw",
     "enabled": true,
     "name": "almroot"
+  },
+  {
+    "url": "https://rcloak.com/api/proxies/raw?protocol=all",
+    "type": "generic_text",
+    "enabled": true,
+    "name": "proxies"
   }
 ]
